@@ -1,7 +1,9 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
 
 generator client {
   provider = "prisma-client-js"
@@ -59,13 +61,15 @@ enum DppVerificationState {
 
 enum CustomerOrderStatus {
   pending_payment
-  payment_submitted
+  payment_proof_submitted
   payment_verified
+  payment_rejected
   processing
   shipped
   delivered
   cancelled
 }
+
 
 // ----------------------------------------------------
 // Core Entities
@@ -462,19 +466,22 @@ model CustomerOrderItem {
 }
 
 model Payment {
-  id              String   @id @default(uuid())
-  customerOrderId String
-  amount          Float
-  paymentProofUrl String?
-  paymentMethod   String   @default("bank_transfer")
-  isVerified      Boolean  @default(false)
-  verifiedAt      DateTime?
-  createdAt       DateTime @default(now())
+  id                String    @id @default(uuid())
+  customerOrderId   String
+  amount            Float
+  paymentProofUrl   String?
+  paymentMethod     String    @default("bank_transfer")
+  isVerified        Boolean   @default(false)
+  verifiedAt        DateTime?
+  verifiedByUserId  String?
+  rejectionReason   String?
+  createdAt         DateTime  @default(now())
 
   customerOrder CustomerOrder @relation(fields: [customerOrderId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
+
 
 model Notification {
   id        String   @id @default(uuid())

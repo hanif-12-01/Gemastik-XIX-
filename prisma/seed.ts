@@ -1,22 +1,39 @@
 import { PrismaClient, Role, DataOrigin, ProductionOrderStatus, PayoutStatus, DppVerificationState } from '@prisma/client'
-import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
-
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex')
-}
 
 async function main() {
   console.log('🌱 Starting EcoThread Database Seed...')
 
-  // 1. Seed Mandatory Users
+  // 1. Hash demo password asynchronously once with cost factor 10
+  const defaultPasswordHash = await bcrypt.hash('Password123!', 10)
+
+  // 2. Seed Mandatory Users (Admin, Mitra 1, Mitra 2, Customer User)
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@ecothread.local' },
-    update: {},
+    update: {
+      name: 'Super Admin EcoThread',
+      role: Role.admin,
+      passwordHash: defaultPasswordHash,
+      userProfile: {
+        upsert: {
+          create: {
+            phone: '+6281234567890',
+            address: 'City Hub Bandung, Jawa Barat',
+            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
+          },
+          update: {
+            phone: '+6281234567890',
+            address: 'City Hub Bandung, Jawa Barat',
+            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
+          }
+        }
+      }
+    },
     create: {
       email: 'admin@ecothread.local',
-      passwordHash: hashPassword('Password123!'),
+      passwordHash: defaultPasswordHash,
       role: Role.admin,
       name: 'Super Admin EcoThread',
       dataOrigin: DataOrigin.demo,
@@ -32,10 +49,54 @@ async function main() {
 
   const mitraUser = await prisma.user.upsert({
     where: { email: 'mitra@ecothread.local' },
-    update: {},
+    update: {
+      name: 'Ibu Ratna (Mitra Penjahit Bandung)',
+      role: Role.mitra,
+      passwordHash: defaultPasswordHash,
+      userProfile: {
+        upsert: {
+          create: {
+            phone: '+6289876543210',
+            address: 'Kec. Bojongsoang, Kab. Bandung',
+            avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200'
+          },
+          update: {
+            phone: '+6289876543210',
+            address: 'Kec. Bojongsoang, Kab. Bandung',
+            avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200'
+          }
+        }
+      },
+      mitraProfile: {
+        upsert: {
+          create: {
+            workshopName: 'Mitra Ratna Jahit Sederhana',
+            specialization: 'Upcycled Denim & Outerwear',
+            capacityPerWeek: 15,
+            location: 'Bandung',
+            rating: 4.9,
+            totalPaidOut: 450000.0,
+            bankAccountInfo: 'BCA 8901234567 a.n Ratna',
+            isVerified: true,
+            dataOrigin: DataOrigin.demo
+          },
+          update: {
+            workshopName: 'Mitra Ratna Jahit Sederhana',
+            specialization: 'Upcycled Denim & Outerwear',
+            capacityPerWeek: 15,
+            location: 'Bandung',
+            rating: 4.9,
+            totalPaidOut: 450000.0,
+            bankAccountInfo: 'BCA 8901234567 a.n Ratna',
+            isVerified: true,
+            dataOrigin: DataOrigin.demo
+          }
+        }
+      }
+    },
     create: {
       email: 'mitra@ecothread.local',
-      passwordHash: hashPassword('Password123!'),
+      passwordHash: defaultPasswordHash,
       role: Role.mitra,
       name: 'Ibu Ratna (Mitra Penjahit Bandung)',
       dataOrigin: DataOrigin.demo,
@@ -62,12 +123,106 @@ async function main() {
     }
   })
 
+  const mitra2User = await prisma.user.upsert({
+    where: { email: 'mitra2@ecothread.local' },
+    update: {
+      name: 'Pak Ahmad (Mitra Penjahit Surabaya)',
+      role: Role.mitra,
+      passwordHash: defaultPasswordHash,
+      userProfile: {
+        upsert: {
+          create: {
+            phone: '+6289876543211',
+            address: 'Kec. Sukolilo, Surabaya, Jawa Timur',
+            avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200'
+          },
+          update: {
+            phone: '+6289876543211',
+            address: 'Kec. Sukolilo, Surabaya, Jawa Timur',
+            avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200'
+          }
+        }
+      },
+      mitraProfile: {
+        upsert: {
+          create: {
+            workshopName: 'Mitra Ahmad Tailor',
+            specialization: 'Upcycled Shirts & Patchwork',
+            capacityPerWeek: 20,
+            location: 'Surabaya',
+            rating: 4.8,
+            totalPaidOut: 0.0,
+            bankAccountInfo: 'Mandiri 1234567890 a.n Ahmad',
+            isVerified: true,
+            dataOrigin: DataOrigin.demo
+          },
+          update: {
+            workshopName: 'Mitra Ahmad Tailor',
+            specialization: 'Upcycled Shirts & Patchwork',
+            capacityPerWeek: 20,
+            location: 'Surabaya',
+            rating: 4.8,
+            totalPaidOut: 0.0,
+            bankAccountInfo: 'Mandiri 1234567890 a.n Ahmad',
+            isVerified: true,
+            dataOrigin: DataOrigin.demo
+          }
+        }
+      }
+    },
+    create: {
+      email: 'mitra2@ecothread.local',
+      passwordHash: defaultPasswordHash,
+      role: Role.mitra,
+      name: 'Pak Ahmad (Mitra Penjahit Surabaya)',
+      dataOrigin: DataOrigin.demo,
+      userProfile: {
+        create: {
+          phone: '+6289876543211',
+          address: 'Kec. Sukolilo, Surabaya, Jawa Timur',
+          avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200'
+        }
+      },
+      mitraProfile: {
+        create: {
+          workshopName: 'Mitra Ahmad Tailor',
+          specialization: 'Upcycled Shirts & Patchwork',
+          capacityPerWeek: 20,
+          location: 'Surabaya',
+          rating: 4.8,
+          totalPaidOut: 0.0,
+          bankAccountInfo: 'Mandiri 1234567890 a.n Ahmad',
+          isVerified: true,
+          dataOrigin: DataOrigin.demo
+        }
+      }
+    }
+  })
+
   const customerUser = await prisma.user.upsert({
     where: { email: 'user@ecothread.local' },
-    update: {},
+    update: {
+      name: 'Budi Eco Consumer',
+      role: Role.user,
+      passwordHash: defaultPasswordHash,
+      userProfile: {
+        upsert: {
+          create: {
+            phone: '+628111222333',
+            address: 'Jl. Dago No. 45, Bandung',
+            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
+          },
+          update: {
+            phone: '+628111222333',
+            address: 'Jl. Dago No. 45, Bandung',
+            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
+          }
+        }
+      }
+    },
     create: {
       email: 'user@ecothread.local',
-      passwordHash: hashPassword('Password123!'),
+      passwordHash: defaultPasswordHash,
       role: Role.user,
       name: 'Budi Eco Consumer',
       dataOrigin: DataOrigin.demo,
@@ -82,11 +237,12 @@ async function main() {
   })
 
   console.log('✅ Seed Users Created:')
-  console.log('   - Admin:  admin@ecothread.local')
-  console.log('   - Mitra:  mitra@ecothread.local')
-  console.log('   - User:   user@ecothread.local')
+  console.log('   - Admin:    admin@ecothread.local')
+  console.log('   - Mitra 1:  mitra@ecothread.local')
+  console.log('   - Mitra 2:  mitra2@ecothread.local')
+  console.log('   - User:     user@ecothread.local')
 
-  // 2. Seed Material Source & Batch
+  // 3. Seed Material Source & Batch
   const source = await prisma.materialSource.upsert({
     where: { sourceCode: 'SRC-BDG-001' },
     update: {},
@@ -124,7 +280,7 @@ async function main() {
     }
   })
 
-  // 3. Seed Pattern
+  // 4. Seed Pattern
   const pattern = await prisma.pattern.upsert({
     where: { patternCode: 'PAT-2026-0001' },
     update: {},
@@ -144,7 +300,7 @@ async function main() {
     }
   })
 
-  // 4. Seed Eco-Kit
+  // 5. Seed Eco-Kit
   const ecoKit = await prisma.ecoKit.upsert({
     where: { kitCode: 'KIT-2026-0001' },
     update: {},
@@ -167,10 +323,12 @@ async function main() {
     }
   })
 
-  // 5. Seed Production Order
+  // 6. Seed Production Order
   const order = await prisma.productionOrder.upsert({
     where: { orderCode: 'ORD-2026-0001' },
-    update: {},
+    update: {
+      mitraUserId: mitraUser.id
+    },
     create: {
       orderCode: 'ORD-2026-0001',
       ecoKitId: ecoKit.id,
@@ -218,12 +376,20 @@ async function main() {
     }
   })
 
-  // 6. Seed Product & Dynamic DPP
+  // 7. Seed Product & Dynamic DPP
+  // Rule 8: Do not create fake impact records. Ensure demo impact records are empty.
+  await prisma.impactRecord.deleteMany({
+    where: { dataOrigin: DataOrigin.demo }
+  })
+
+  const dppBaseUrl = (process.env.DPP_PUBLIC_BASE_URL || process.env.DPP_BASE_URL || process.env.VITE_DPP_BASE_URL || 'http://localhost:5175').replace(/\/$/, '')
+  const productCode = 'PRD-2026-0001'
+
   const product = await prisma.product.upsert({
-    where: { productCode: 'PRD-2026-0001' },
+    where: { productCode },
     update: {},
     create: {
-      productCode: 'PRD-2026-0001',
+      productCode,
       productionOrderId: order.id,
       name: 'Upcycled Denim Eco-Kimono Jacket (Special Edition)',
       description: 'Jaket Kimono eksklusif berbahan 100% denim sisa industri, dibuat oleh mitra penjahit lokal Ibu Ratna.',
@@ -239,29 +405,21 @@ async function main() {
           weightKg: 1.8
         }
       },
-      impactRecords: {
-        create: {
-          co2SavedKg: 12.4,
-          waterSavedLiters: 2450.0,
-          landfillDivertedKg: 1.8,
-          dataOrigin: DataOrigin.demo
-        }
-      },
       dppRecord: {
         create: {
-          productCode: 'PRD-2026-0001',
+          productCode,
           verificationState: DppVerificationState.database_verified,
-          qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=http://localhost:5175/dpp/PRD-2026-0001',
+          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${dppBaseUrl}/dpp/${productCode}`,
           dataOrigin: DataOrigin.demo,
           dppVersions: {
             create: {
               versionNum: 1,
               payloadJson: JSON.stringify({
-                productCode: 'PRD-2026-0001',
+                productCode,
                 productName: 'Upcycled Denim Eco-Kimono Jacket',
                 materialSource: 'Bank Sampah Tekstil Majalaya',
                 mitraName: 'Ibu Ratna (Bandung)',
-                impactMetrics: { co2SavedKg: 12.4, waterSavedLiters: 2450.0 }
+                impactMetrics: {}
               })
             }
           }
@@ -270,7 +428,7 @@ async function main() {
     }
   })
 
-  // 7. Seed Catalog Item for Customer Portal
+  // 8. Seed Catalog Item for Customer Portal
   await prisma.catalogItem.upsert({
     where: { slug: 'upcycled-denim-eco-kimono-jacket' },
     update: {},
