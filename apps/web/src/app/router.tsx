@@ -1,10 +1,14 @@
 import React from 'react'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
+
+// Layouts
 import { PublicLayout } from './layouts/PublicLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { AdminLayout } from './layouts/AdminLayout'
 import { MitraLayout } from './layouts/MitraLayout'
-import { RouteGuard } from './route-guards'
+
+// Guards
+import { ProtectedRoute, RoleGuard, MitraVerificationGuard } from './route-guards'
 
 // Public Pages
 import { LandingPage } from '../pages/public/LandingPage'
@@ -19,20 +23,25 @@ import { AdminInvitationPage } from '../pages/auth/AdminInvitationPage'
 import { MitraLoginPage } from '../pages/auth/MitraLoginPage'
 import { MitraRegistrationPage } from '../pages/auth/MitraRegistrationPage'
 import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage'
 
-// Protected Dashboard Placeholders
+// Protected Pages
 import { AdminDashboardPlaceholder } from '../pages/admin/AdminDashboardPlaceholder'
+import { AdminMitraApplicationsPage } from '../pages/admin/AdminMitraApplicationsPage'
 import { MitraDashboardPlaceholder } from '../pages/mitra/MitraDashboardPlaceholder'
+import { MitraVerificationStatusPage } from '../pages/mitra/MitraVerificationStatusPage'
 
 // Error Pages
 import { NotFoundPage } from '../pages/errors/NotFoundPage'
 import { ForbiddenPage } from '../pages/errors/ForbiddenPage'
+import { UnexpectedErrorPage } from '../pages/errors/UnexpectedErrorPage'
 
 export const router = createBrowserRouter([
-  // Public Routes Group
+  // Public Routes
   {
     path: '/',
     element: <PublicLayout />,
+    errorElement: <UnexpectedErrorPage />,
     children: [
       { index: true, element: <LandingPage /> },
       { path: 'portal', element: <PortalSelectionPage /> },
@@ -42,52 +51,63 @@ export const router = createBrowserRouter([
     ]
   },
 
-  // Auth Routes Group
+  // Auth Routes
   {
-    path: 'auth',
+    path: '/auth',
     element: <AuthLayout />,
+    errorElement: <UnexpectedErrorPage />,
     children: [
       { path: 'admin/login', element: <AdminLoginPage /> },
       { path: 'admin/invite/:token', element: <AdminInvitationPage /> },
       { path: 'mitra/login', element: <MitraLoginPage /> },
       { path: 'mitra/register', element: <MitraRegistrationPage /> },
-      { path: 'forgot-password', element: <ForgotPasswordPage /> }
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'reset-password/:token', element: <ResetPasswordPage /> }
     ]
   },
 
-  // Protected Admin Routes Group
+  // Protected Admin Routes
   {
-    path: 'admin',
+    path: '/admin',
     element: (
-      <RouteGuard requiredRole="admin">
-        <AdminLayout />
-      </RouteGuard>
+      <ProtectedRoute>
+        <RoleGuard allowedRoles={['admin']}>
+          <AdminLayout />
+        </RoleGuard>
+      </ProtectedRoute>
     ),
+    errorElement: <UnexpectedErrorPage />,
     children: [
-      { index: true, element: <AdminDashboardPlaceholder /> }
+      { index: true, element: <AdminDashboardPlaceholder /> },
+      { path: 'mitra', element: <AdminMitraApplicationsPage /> }
     ]
   },
 
-  // Protected Mitra Routes Group
+  // Protected Mitra Routes
   {
-    path: 'mitra',
+    path: '/mitra',
     element: (
-      <RouteGuard requiredRole="mitra">
-        <MitraLayout />
-      </RouteGuard>
+      <ProtectedRoute>
+        <RoleGuard allowedRoles={['mitra']}>
+          <MitraLayout />
+        </RoleGuard>
+      </ProtectedRoute>
     ),
+    errorElement: <UnexpectedErrorPage />,
     children: [
-      { index: true, element: <MitraDashboardPlaceholder /> }
+      { path: 'verification-status', element: <MitraVerificationStatusPage /> },
+      {
+        index: true,
+        element: (
+          <MitraVerificationGuard>
+            <MitraDashboardPlaceholder />
+          </MitraVerificationGuard>
+        )
+      }
     ]
   },
 
-  // Error Routes Group
-  {
-    path: '403',
-    element: <ForbiddenPage />
-  },
-  {
-    path: '*',
-    element: <NotFoundPage />
-  }
+  // Error Routes
+  { path: '/403', element: <ForbiddenPage /> },
+  { path: '*', element: <NotFoundPage /> }
 ])

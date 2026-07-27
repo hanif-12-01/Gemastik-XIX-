@@ -1,16 +1,6 @@
 import React from 'react'
+import { AuthProvider } from '../features/auth/AuthContext'
 
-interface ProvidersProps {
-  children: React.ReactNode
-}
-
-/**
- * Application context providers wrapper
- */
-export const Providers: React.FC<ProvidersProps> = ({ children }) => {
-  return (
-    <>
-      {children}
-    </>
-  )
+export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return <AuthProvider>{children}</AuthProvider>
 }

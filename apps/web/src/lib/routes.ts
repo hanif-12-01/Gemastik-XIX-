@@ -17,11 +17,25 @@ export const ROUTES = {
     getAdminInvite: (token: string) => `/auth/admin/invite/${token}`,
     MITRA_LOGIN: '/auth/mitra/login',
     MITRA_REGISTER: '/auth/mitra/register',
-    FORGOT_PASSWORD: '/auth/forgot-password'
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password/:token',
+    getResetPassword: (token: string) => `/auth/reset-password/${token}`
+  },
+  ADMIN: {
+    DASHBOARD: '/admin',
+    MITRA_APPLICATIONS: '/admin/mitra'
+  },
+  MITRA: {
+    DASHBOARD: '/mitra',
+    VERIFICATION_STATUS: '/mitra/verification-status'
   },
   PROTECTED: {
     ADMIN: '/admin',
     MITRA: '/mitra'
+  },
+  ERROR: {
+    FORBIDDEN: '/403',
+    NOT_FOUND: '/404'
   },
   ERRORS: {
     FORBIDDEN: '/403',
