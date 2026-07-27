@@ -1,96 +1,104 @@
-# EcoThread - Gemastik XIX 🚀
+# EcoThread — Platform Manufaktur Fashion Sirkular Terdesentralisasi 🚀
 
-Repositori ini berisi keseluruhan ekosistem proyek **EcoThread** yang diajukan untuk perlombaan **Gemastik XIX**. Proyek ini terdiri dari aplikasi web berbasis React (Vite) beserta dokumen PRD, arsitektur sistem, tugas implementasi MVP, riset, perencanaan, proposal, dan naskah presentasi yang terstruktur dengan rapi.
+**Solusi Fashion Technology & Circular Economy berbasis Digital Product Passport (DPP)**  
+**Target:** GEMASTIK XIX — Divisi Bisnis TIK  
 
 ---
 
-## 📂 Struktur Proyek
+## 📂 Struktur Monorepo Repository
 
 ```text
 Gemastik-XIX-/
-├── docs/                             # Dokumen & Perencanaan Proyek
-│   ├── prd/                          # Product Requirement Document (PRD)
-│   │   └── PRD_EcoThread_v1.0.md
-│   ├── architecture/                 # Arsitektur & Spesifikasi Sistem
-│   │   └── system-architecture.md
-│   ├── tasks/                        # Task List & Rincian Modul MVP (ECOT-MVP)
-│   │   ├── ECOT-MVP-001-foundation.md
-│   │   ├── ECOT-MVP-002-auth-rbac.md
-│   │   ├── ECOT-MVP-003-core-data-api.md
-│   │   ├── ECOT-MVP-004-admin-mitra-flow.md
-│   │   ├── ECOT-MVP-005-qc-payout-dpp.md
-│   │   ├── ECOT-MVP-006-user-preorder.md
-│   │   ├── ECOT-MVP-007-pilot-evidence.md
-│   │   └── ECOT-MVP-008-test-deploy-submit.md
-│   ├── proposal/                     # Proposal, Business Plan & Analisa Sistem
-│   │   ├── Proposal_Analisa_Mendalam.md
-│   │   ├── EcoThread_Business_Plan.md
-│   │   ├── EcoThread_Validasi_BMC.md
-│   │   ├── EcoThread_Arsitektur_ICT.md
-│   │   └── EcoThread_Studi_Kasus_PO.md
-│   ├── plans/                        # Rencana MVP & Storyboard UI
-│   │   ├── EcoThread_MVP_Plan.md
-│   │   ├── EcoThread_MVP4_Customer_Plan.md
-│   │   └── ECOTHREAD_STORYBOARD.md
-│   └── scripts/                      # Naskah Video & Presentasi
-│       ├── Naskah_Video_Presentasi_EcoThread.txt
-│       └── Naskah_Hanif_Superadmin_Customer.txt
-├── echothread-superadmin-app/        # App Web Dashboard Superadmin (React + Vite + Tailwind)
-├── ecothread-dpp-customer/           # App Web DPP / Customer Portal (React + Vite)
-├── ecothread-mitra-react/            # App Web Portal Mitra (React + Vite)
-├── ecothread-animation-demo/         # Demo Animasi Interaktif (React + Vite)
-└── README.md                         # Dokumentasi Utama Repositori
+├── apps/
+│   ├── admin/                        # App Web Dashboard Superadmin (React + Vite, Port 5173)
+│   ├── mitra/                        # App Web Portal Mitra Penjahit (React + Vite, Port 5174)
+│   ├── user/                         # App Web Consumer & DPP Portal (React + Vite, Port 5175)
+│   ├── explainer/                    # Demo Animasi Alur Sirkular (React + Vite, Port 5176)
+│   ├── api/                          # Node.js + Fastify + TypeScript Core API (Port 4000)
+│   └── ai-worker/                    # FastAPI Python AI Microservice (Port 8000)
+├── packages/
+│   ├── contracts/                    # Zod Schemas, State Machine & TS Contracts
+│   └── api-client/                   # Shared API SDK Client untuk Frontend
+├── prisma/
+│   ├── schema.prisma                 # Schema 28 Entitas Database
+│   └── seed.ts                       # Seed 3 Akun Wajib & Demo Dataset
+├── docs/                             # Dokumentasi Teknis & Perencanaan
+│   ├── prd/                          # Product Requirement Document (PRD v1.0)
+│   ├── architecture/                 # System Architecture & Database Specifications
+│   └── tasks/                        # Task List ECOT-MVP-001 hingga ECOT-MVP-008
+├── DEMO.md                           # Panduan Demo 5-7 Menit & Kredensial Akun
+├── DEPLOYMENT.md                     # Panduan Deployment Staging & Production
+└── README.md                         # Dokumentasi Utama Repository
 ```
 
 ---
 
-## 💻 Aplikasi Web EcoThread
+## 🔑 Akun Demo Development & Staging
 
-1. **`echothread-superadmin-app/`**  
-   Dashboard utama pemantauan dan pengelolaan operasional superadmin EcoThread.
-2. **`ecothread-dpp-customer/`**  
-   Aplikasi portal customer & Digital Product Passport (DPP) EcoThread.
-3. **`ecothread-mitra-react/`**  
-   Aplikasi web interaktif khusus mitra daur ulang & pengepul limbah tekstil.
-4. **`ecothread-animation-demo/`**  
-   Demo animasi interaktif mengenai proses daur ulang & alur kerja EcoThread.
+| Role | Email | Password | Aplikasi |
+| :--- | :--- | :--- | :--- |
+| **Super Admin** | `admin@ecothread.local` | `Password123!` | [Admin Dashboard](http://localhost:5173) |
+| **Mitra Penjahit** | `mitra@ecothread.local` | `Password123!` | [Mitra Portal](http://localhost:5174) |
+| **Consumer (User)** | `user@ecothread.local` | `Password123!` | [User & DPP Portal](http://localhost:5175) |
 
 ---
 
 ## 🛠️ Prasyarat (Prerequisites)
 
-Pastikan lingkungan kerja Anda sudah terpasang:
-* [Node.js](https://nodejs.org/) (v18+ atau versi LTS direkomendasikan)
-* [npm](https://www.npmjs.com/) / [yarn](https://yarnpkg.com/)
-* [Git](https://git-scm.com/)
+* **Node.js** v20+ atau v22+ LTS
+* **pnpm** v10+ (`npm install -g pnpm`)
+* **Git**
 
 ---
 
 ## 🚀 Cara Menjalankan Aplikasi Secara Lokal
 
-Masing-masing aplikasi dapat dijalankan secara terpisah menggunakan Vite.
-
-### 1. Kloning Repositori
 ```bash
+# 1. Kloning Repositori & Masuk ke Folder Proyek
 git clone https://github.com/hanif-12-01/Gemastik-XIX-.git
 cd Gemastik-XIX-
+
+# 2. Checkout Branch MVP Final
+git checkout feature/ecothread-mvp-final
+
+# 3. Instal Seluruh Dependensi Monorepo
+pnpm install
+
+# 4. Inisialisasi Database SQLite/PostgreSQL & Seeding Data Wajib
+pnpm prisma generate
+pnpm prisma db push
+pnpm db:seed
+
+# 5. Jalankan Backend API Server (Port 4000)
+pnpm --filter "@ecothread/api" dev
+
+# 6. Jalankan Frontend App (di Terminal Baru)
+pnpm --filter "@ecothread/admin" dev   # Open http://localhost:5173
+pnpm --filter "@ecothread/mitra" dev   # Open http://localhost:5174
+pnpm --filter "@ecothread/user" dev    # Open http://localhost:5175
 ```
 
-### 2. Menjalankan Sub-Proyek (Contoh: Dashboard Superadmin)
+---
+
+## 🧪 Menjalankan Automated Test Suite
+
 ```bash
-# 1. Pindah ke direktori sub-proyek yang ingin dijalankan
-cd echothread-superadmin-app
+# 1. Menjalankan Unit Tests (State Machine & Validasi)
+npx tsx packages/contracts/test/contracts.test.ts
 
-# 2. Instal semua dependensi
-npm install
-
-# 3. Jalankan server lokal
-npm run dev
+# 2. Menjalankan E2E Vertical Slice Test (Memastikan 10 Step Utama Berhasil)
+npx tsx apps/api/test/e2e-vertical-slice.test.ts
 ```
 
-*Catatan: Ulangi langkah di atas pada direktori aplikasi lain (`ecothread-dpp-customer`, `ecothread-mitra-react`, atau `ecothread-animation-demo`) sesuai kebutuhan.*
+---
+
+## 📄 Dokumentasi Terkait
+- [DEMO.md](file:///d:/LOMBA/GEMASTIK/DEMO.md) — Panduan Skenario Presentasi & Demo 5-7 Menit
+- [DEPLOYMENT.md](file:///d:/LOMBA/GEMASTIK/DEPLOYMENT.md) — Instruksi Deployment Staging & Production
+- [PRD_EcoThread_v1.0.md](file:///d:/LOMBA/GEMASTIK/docs/prd/PRD_EcoThread_v1.0.md) — Product Requirement Document
+- [system-architecture.md](file:///d:/LOMBA/GEMASTIK/docs/architecture/system-architecture.md) — Arsitektur Teknis Sistem
 
 ---
 
 ## 📄 Lisensi
-Hak Cipta © 2026 Tim EcoThread. Dibuat untuk Gemastik XIX.
+Hak Cipta © 2026 Tim EcoThread. Dibuat untuk Gemastik XIX — Divisi Bisnis TIK.
