@@ -78,6 +78,7 @@ async function main() {
             totalPaidOut: 450000.0,
             bankAccountInfo: 'BCA 8901234567 a.n Ratna',
             isVerified: true,
+            verificationStatus: 'approved',
             dataOrigin: DataOrigin.demo
           },
           update: {
@@ -89,6 +90,7 @@ async function main() {
             totalPaidOut: 450000.0,
             bankAccountInfo: 'BCA 8901234567 a.n Ratna',
             isVerified: true,
+            verificationStatus: 'approved',
             dataOrigin: DataOrigin.demo
           }
         }
@@ -117,6 +119,7 @@ async function main() {
           totalPaidOut: 450000.0,
           bankAccountInfo: 'BCA 8901234567 a.n Ratna',
           isVerified: true,
+          verificationStatus: 'approved',
           dataOrigin: DataOrigin.demo
         }
       }
@@ -154,6 +157,7 @@ async function main() {
             totalPaidOut: 0.0,
             bankAccountInfo: 'Mandiri 1234567890 a.n Ahmad',
             isVerified: true,
+            verificationStatus: 'approved',
             dataOrigin: DataOrigin.demo
           },
           update: {
@@ -165,6 +169,7 @@ async function main() {
             totalPaidOut: 0.0,
             bankAccountInfo: 'Mandiri 1234567890 a.n Ahmad',
             isVerified: true,
+            verificationStatus: 'approved',
             dataOrigin: DataOrigin.demo
           }
         }
@@ -193,6 +198,57 @@ async function main() {
           totalPaidOut: 0.0,
           bankAccountInfo: 'Mandiri 1234567890 a.n Ahmad',
           isVerified: true,
+          verificationStatus: 'approved',
+          dataOrigin: DataOrigin.demo
+        }
+      }
+    }
+  })
+
+  // Pending Mitra Seed Account for Verification Testing
+  const pendingMitraUser = await prisma.user.upsert({
+    where: { email: 'mitra_pending@ecothread.local' },
+    update: {
+      name: 'Bapak Budi (Mitra Penjahit Semarang)',
+      role: Role.mitra,
+      passwordHash: defaultPasswordHash,
+      mitraProfile: {
+        upsert: {
+          create: {
+            workshopName: 'Konveksi Budi Mandiri',
+            specialization: 'Pakaian Anak Upcycle',
+            capacityPerWeek: 12,
+            location: 'Semarang',
+            isVerified: false,
+            verificationStatus: 'pending_verification',
+            dataOrigin: DataOrigin.demo
+          },
+          update: {
+            workshopName: 'Konveksi Budi Mandiri',
+            specialization: 'Pakaian Anak Upcycle',
+            capacityPerWeek: 12,
+            location: 'Semarang',
+            isVerified: false,
+            verificationStatus: 'pending_verification',
+            dataOrigin: DataOrigin.demo
+          }
+        }
+      }
+    },
+    create: {
+      email: 'mitra_pending@ecothread.local',
+      passwordHash: defaultPasswordHash,
+      role: Role.mitra,
+      name: 'Bapak Budi (Mitra Penjahit Semarang)',
+      dataOrigin: DataOrigin.demo,
+      mitraProfile: {
+        create: {
+          workshopName: 'Konveksi Budi Mandiri',
+          specialization: 'Pakaian Anak Upcycle',
+          capacityPerWeek: 12,
+          location: 'Semarang',
+          isVerified: false,
+          verificationStatus: 'pending_verification',
           dataOrigin: DataOrigin.demo
         }
       }

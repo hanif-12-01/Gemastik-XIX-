@@ -73,6 +73,70 @@ export class EcoThreadApiClient {
     return this.request('/me')
   }
 
+  public async logout() {
+    try {
+      await this.request('/auth/logout', { method: 'POST' })
+    } catch (e) {
+      // Ignore network failure on logout
+    } finally {
+      this.setToken(null)
+    }
+  }
+
+  public async registerMitra(payload: any) {
+    return this.request('/auth/mitra/register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async createAdminInvitation(payload: { email: string; expiresInHours?: number }) {
+    return this.request('/auth/admin/invitations', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async validateAdminInvitation(token: string) {
+    return this.request(`/auth/admin/invitations/${token}/validate`)
+  }
+
+  public async registerAdminFromInvitation(token: string, payload: { password: string; name: string }) {
+    return this.request(`/auth/admin/invitations/${token}/register`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async forgotPassword(email: string) {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    })
+  }
+
+  public async resetPassword(token: string, password: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password })
+    })
+  }
+
+  public async listMitraApplications() {
+    return this.request('/admin/mitra-applications')
+  }
+
+  public async getMitraApplication(id: string) {
+    return this.request(`/admin/mitra-applications/${id}`)
+  }
+
+  public async decideMitraApplication(id: string, approve: boolean, notes?: string) {
+    return this.request(`/admin/mitra-applications/${id}/decision`, {
+      method: 'POST',
+      body: JSON.stringify({ approve, notes })
+    })
+  }
+
   // Admin
   public async getAdminDashboardStats() {
     return this.request('/admin/dashboard-stats')

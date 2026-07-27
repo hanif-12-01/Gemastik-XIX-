@@ -84,6 +84,43 @@ export const LoginSchema = z.object({
   password: z.string().min(6)
 })
 
+export const RegisterMitraSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(2),
+  workshopName: z.string().min(2),
+  specialization: z.string().optional(),
+  capacityPerWeek: z.number().int().nonnegative().default(10),
+  location: z.string().min(2),
+  phone: z.string().min(8),
+  address: z.string().min(5).optional(),
+  portfolioUrl: z.string().optional()
+})
+
+export const CreateAdminInvitationSchema = z.object({
+  email: z.string().email(),
+  expiresInHours: z.number().int().positive().default(24)
+})
+
+export const RegisterAdminFromInvitationSchema = z.object({
+  password: z.string().min(6),
+  name: z.string().min(2)
+})
+
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email()
+})
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(6)
+})
+
+export const MitraDecisionSchema = z.object({
+  approve: z.boolean(),
+  notes: z.string().optional()
+})
+
 export const CreateMaterialBatchSchema = z.object({
   sourceId: z.string().uuid().optional(),
   sourceName: z.string().min(2),

@@ -19,6 +19,13 @@ enum Role {
   user
 }
 
+enum MitraVerificationStatus {
+  pending_verification
+  approved
+  rejected
+  suspended
+}
+
 enum DataOrigin {
   demo
   actual
@@ -81,6 +88,9 @@ model User {
   passwordHash String
   role         Role          @default(user)
   name         String
+  accountStatus String       @default("active")
+  lastLoginAt  DateTime?
+  passwordChangedAt DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   dataOrigin   DataOrigin    @default(demo)
@@ -92,6 +102,8 @@ model User {
   customerOrders CustomerOrder[]
   auditLogs      AuditLog[]
   notifications  Notification[]
+  adminInvitationsCreated AdminInvitation[] @relation("InvitedAdmins")
+  passwordResetTokens     PasswordResetToken[]
 
   @@map("users")
 }
@@ -109,21 +121,52 @@ model UserProfile {
 }
 
 model MitraProfile {
-  id              String     @id @default(uuid())
-  userId          String     @unique
+  id              String                  @id @default(uuid())
+  userId          String                  @unique
   workshopName    String
   specialization  String?
-  capacityPerWeek Int        @default(10)
+  capacityPerWeek Int                     @default(10)
   location        String
-  rating          Float      @default(5.0)
-  totalPaidOut    Float      @default(0.0)
+  rating          Float                   @default(5.0)
+  totalPaidOut    Float                   @default(0.0)
   bankAccountInfo String?
-  isVerified      Boolean    @default(true)
-  dataOrigin      DataOrigin @default(demo)
+  isVerified      Boolean                 @default(true)
+  verificationStatus MitraVerificationStatus @default(pending_verification)
+  verificationNotes  String?
+  verifiedAt         DateTime?
+  verifiedByUserId   String?
+  dataOrigin      DataOrigin              @default(demo)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("mitra_profiles")
+}
+
+model AdminInvitation {
+  id              String    @id @default(uuid())
+  email           String
+  tokenHash       String    @unique
+  invitedByUserId String
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  invitedBy User @relation("InvitedAdmins", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@map("admin_invitations")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }
 
 model MaterialSource {

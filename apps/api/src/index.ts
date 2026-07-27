@@ -1,10 +1,17 @@
+import crypto from 'crypto'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
-import { PrismaClient, Role, ProductionOrderStatus, PayoutStatus, DppVerificationState, DataOrigin } from '@prisma/client'
+import { PrismaClient, Role, ProductionOrderStatus, PayoutStatus, DppVerificationState, DataOrigin, MitraVerificationStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import {
   LoginSchema,
+  RegisterMitraSchema,
+  CreateAdminInvitationSchema,
+  RegisterAdminFromInvitationSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
+  MitraDecisionSchema,
   CreateMaterialBatchSchema,
   CreateProductionOrderSchema,
   SubmitQcEvidenceSchema,
@@ -115,6 +122,13 @@ fastify.get('/api/v1/health', async () => {
 // ----------------------------------------------------
 // Auth Endpoints
 // ----------------------------------------------------
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
+
+// ----------------------------------------------------
+// Auth Endpoints
+// ----------------------------------------------------
 fastify.post('/api/v1/auth/login', async (request: any, reply: any) => {
   const result = LoginSchema.safeParse(request.body)
   if (!result.success) {
@@ -129,18 +143,31 @@ fastify.post('/api/v1/auth/login', async (request: any, reply: any) => {
   })
 
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    return reply.status(401).send({ success: false, error: 'Email atau password salah.' })
+    return reply.status(401).send({ success: false, error: 'Email atau password tidak valid.' })
   }
 
-  const token = fastify.jwt.sign({
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    name: user.name
-  }, { expiresIn: JWT_EXPIRES_IN })
+  if (user.accountStatus === 'suspended' || user.accountStatus === 'inactive') {
+    return reply.status(403).send({ success: false, error: 'Akun Anda telah ditangguhkan. Hubungi Admin EcoThread.' })
+  }
 
+  // Update last login timestamp
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() }
+  })
 
-  await createAuditLog(user.id, 'USER_LOGIN', 'users', user.id, `User ${user.email} login`)
+  const token = fastify.jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      mitraVerificationStatus: user.mitraProfile?.verificationStatus
+    },
+    { expiresIn: JWT_EXPIRES_IN }
+  )
+
+  await createAuditLog(user.id, 'USER_LOGIN', 'users', user.id, `User ${user.email} logged in`)
 
   return reply.send({
     success: true,
@@ -151,10 +178,18 @@ fastify.post('/api/v1/auth/login', async (request: any, reply: any) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        accountStatus: user.accountStatus,
         profile: user.userProfile,
         mitraProfile: user.mitraProfile
       }
     }
+  })
+})
+
+fastify.post('/api/v1/auth/logout', async (_request: any, reply: any) => {
+  return reply.send({
+    success: true,
+    message: 'Berhasil keluar.'
   })
 })
 
@@ -176,9 +211,346 @@ fastify.get('/api/v1/me', { preHandler: [fastify.authenticate] }, async (request
       email: user.email,
       name: user.name,
       role: user.role,
+      accountStatus: user.accountStatus,
       profile: user.userProfile,
       mitraProfile: user.mitraProfile
     }
+  })
+})
+
+// Public Mitra Registration
+fastify.post('/api/v1/auth/mitra/register', async (request: any, reply: any) => {
+  const result = RegisterMitraSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input pendaftaran Mitra tidak valid.', meta: result.error.format() })
+  }
+
+  const { email, password, name, workshopName, specialization, capacityPerWeek, location, phone, address } = result.data
+
+  const existingUser = await prisma.user.findUnique({ where: { email } })
+  if (existingUser) {
+    return reply.status(400).send({ success: false, error: 'Email sudah terdaftar. Gunakan email lain atau masuk.' })
+  }
+
+  const passwordHash = await hashPassword(password)
+
+  const newUser = await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+      name,
+      role: Role.mitra,
+      dataOrigin: DataOrigin.actual,
+      userProfile: {
+        create: {
+          phone,
+          address
+        }
+      },
+      mitraProfile: {
+        create: {
+          workshopName,
+          specialization,
+          capacityPerWeek,
+          location,
+          isVerified: false,
+          verificationStatus: MitraVerificationStatus.pending_verification,
+          dataOrigin: DataOrigin.actual
+        }
+      }
+    },
+    include: { mitraProfile: true }
+  })
+
+  await createAuditLog(newUser.id, 'MITRA_REGISTER', 'users', newUser.id, `Mitra ${newUser.email} registered (pending_verification)`)
+
+  return reply.send({
+    success: true,
+    data: {
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        mitraProfile: newUser.mitraProfile
+      }
+    },
+    message: 'Pendaftaran Mitra berhasil. Akun Anda sedang dalam proses verifikasi Admin.'
+  })
+})
+
+// Admin Invitation Creation (Admin only)
+fastify.post('/api/v1/auth/admin/invitations', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const result = CreateAdminInvitationSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Email undangan tidak valid.' })
+  }
+
+  const { email, expiresInHours } = result.data
+
+  const rawToken = crypto.randomBytes(32).toString('hex')
+  const tokenHash = hashToken(rawToken)
+  const expiresAt = new Date(Date.now() + (expiresInHours || 24) * 60 * 60 * 1000)
+
+  const invitation = await prisma.adminInvitation.create({
+    data: {
+      email,
+      tokenHash,
+      invitedByUserId: request.user.id,
+      expiresAt
+    }
+  })
+
+  await createAuditLog(request.user.id, 'CREATE_ADMIN_INVITATION', 'admin_invitations', invitation.id, `Invited ${email}`)
+
+  const inviteUrl = `${process.env.VITE_APP_URL || 'http://localhost:3000'}/auth/admin/invite/${rawToken}`
+
+  return reply.send({
+    success: true,
+    data: {
+      invitationId: invitation.id,
+      email: invitation.email,
+      expiresAt: invitation.expiresAt,
+      token: rawToken,
+      inviteUrl
+    },
+    message: 'Undangan Admin berhasil dibuat.'
+  })
+})
+
+// Validate Admin Invitation Token
+fastify.get('/api/v1/auth/admin/invitations/:token/validate', async (request: any, reply: any) => {
+  const { token } = request.params
+  const tokenHash = hashToken(token)
+
+  const invitation = await prisma.adminInvitation.findUnique({
+    where: { tokenHash }
+  })
+
+  if (!invitation) {
+    return reply.status(404).send({ success: false, error: 'Undangan Admin tidak ditemukan atau token tidak valid.' })
+  }
+
+  if (invitation.usedAt) {
+    return reply.status(400).send({ success: false, error: 'Undangan Admin ini sudah pernah digunakan.' })
+  }
+
+  if (invitation.expiresAt < new Date()) {
+    return reply.status(400).send({ success: false, error: 'Undangan Admin telah kedaluwarsa.' })
+  }
+
+  return reply.send({
+    success: true,
+    data: {
+      email: invitation.email,
+      expiresAt: invitation.expiresAt
+    }
+  })
+})
+
+// Register Admin from Invitation Token
+fastify.post('/api/v1/auth/admin/invitations/:token/register', async (request: any, reply: any) => {
+  const { token } = request.params
+  const result = RegisterAdminFromInvitationSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input pendaftaran Admin tidak valid.', meta: result.error.format() })
+  }
+
+  const tokenHash = hashToken(token)
+  const invitation = await prisma.adminInvitation.findUnique({ where: { tokenHash } })
+
+  if (!invitation || invitation.usedAt || invitation.expiresAt < new Date()) {
+    return reply.status(400).send({ success: false, error: 'Token undangan Admin tidak valid, sudah digunakan, atau kedaluwarsa.' })
+  }
+
+  const existingUser = await prisma.user.findUnique({ where: { email: invitation.email } })
+  if (existingUser) {
+    return reply.status(400).send({ success: false, error: 'Akun dengan email ini sudah ada.' })
+  }
+
+  const passwordHash = await hashPassword(result.data.password)
+
+  const adminUser = await prisma.user.create({
+    data: {
+      email: invitation.email,
+      passwordHash,
+      name: result.data.name,
+      role: Role.admin,
+      dataOrigin: DataOrigin.actual
+    }
+  })
+
+  await prisma.adminInvitation.update({
+    where: { id: invitation.id },
+    data: { usedAt: new Date() }
+  })
+
+  await createAuditLog(adminUser.id, 'REGISTER_ADMIN_INVITATION', 'users', adminUser.id, `Admin ${adminUser.email} registered via invitation`)
+
+  return reply.send({
+    success: true,
+    data: {
+      id: adminUser.id,
+      email: adminUser.email,
+      role: adminUser.role
+    },
+    message: 'Pendaftaran Admin berhasil. Silakan login.'
+  })
+})
+
+// Forgot Password Request
+fastify.post('/api/v1/auth/forgot-password', async (request: any, reply: any) => {
+  const result = ForgotPasswordSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Email tidak valid.' })
+  }
+
+  const { email } = result.data
+  const user = await prisma.user.findUnique({ where: { email } })
+
+  if (user) {
+    const rawToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashToken(rawToken)
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt
+      }
+    })
+
+    await createAuditLog(user.id, 'FORGOT_PASSWORD_REQUEST', 'users', user.id, `Reset requested for ${email}`)
+  }
+
+  // Always return generic response to avoid email enumeration
+  return reply.send({
+    success: true,
+    message: 'Jika email Anda terdaftar, instruksi pemulihan kata sandi telah dikirimkan.'
+  })
+})
+
+// Reset Password Execution
+fastify.post('/api/v1/auth/reset-password', async (request: any, reply: any) => {
+  const result = ResetPasswordSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input reset password tidak valid.' })
+  }
+
+  const { token, password } = result.data
+  const tokenHash = hashToken(token)
+
+  const resetRecord = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+    include: { user: true }
+  })
+
+  if (!resetRecord || resetRecord.usedAt || resetRecord.expiresAt < new Date()) {
+    return reply.status(400).send({ success: false, error: 'Token pemulihan kata sandi tidak valid, sudah digunakan, atau kedaluwarsa.' })
+  }
+
+  const newPasswordHash = await hashPassword(password)
+
+  await prisma.user.update({
+    where: { id: resetRecord.userId },
+    data: {
+      passwordHash: newPasswordHash,
+      passwordChangedAt: new Date()
+    }
+  })
+
+  await prisma.passwordResetToken.update({
+    where: { id: resetRecord.id },
+    data: { usedAt: new Date() }
+  })
+
+  await createAuditLog(resetRecord.userId, 'RESET_PASSWORD_SUCCESS', 'users', resetRecord.userId, `Password reset completed`)
+
+  return reply.send({
+    success: true,
+    message: 'Kata sandi berhasil diperbarui. Silakan login dengan kata sandi baru Anda.'
+  })
+})
+
+// Admin Mitra Applications Management Endpoints
+fastify.get('/api/v1/admin/mitra-applications', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async () => {
+  const applications = await prisma.mitraProfile.findMany({
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          createdAt: true
+        }
+      }
+    },
+    orderBy: { user: { createdAt: 'desc' } }
+  })
+
+  return {
+    success: true,
+    data: applications
+  }
+})
+
+fastify.get('/api/v1/admin/mitra-applications/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const application = await prisma.mitraProfile.findUnique({
+    where: { id },
+    include: { user: true }
+  })
+
+  if (!application) {
+    return reply.status(404).send({ success: false, error: 'Aplikasi Mitra tidak ditemukan.' })
+  }
+
+  return {
+    success: true,
+    data: application
+  }
+})
+
+fastify.post('/api/v1/admin/mitra-applications/:id/decision', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const result = MitraDecisionSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Keputusan verifikasi tidak valid.' })
+  }
+
+  const { approve, notes } = result.data
+
+  const mitraProfile = await prisma.mitraProfile.findUnique({ where: { id } })
+  if (!mitraProfile) {
+    return reply.status(404).send({ success: false, error: 'Aplikasi Mitra tidak ditemukan.' })
+  }
+
+  const newStatus = approve ? MitraVerificationStatus.approved : MitraVerificationStatus.rejected
+
+  const updatedProfile = await prisma.mitraProfile.update({
+    where: { id },
+    data: {
+      isVerified: approve,
+      verificationStatus: newStatus,
+      verificationNotes: notes || null,
+      verifiedAt: new Date(),
+      verifiedByUserId: request.user.id
+    }
+  })
+
+  await createAuditLog(
+    request.user.id,
+    approve ? 'APPROVE_MITRA' : 'REJECT_MITRA',
+    'mitra_profiles',
+    id,
+    `Mitra ${id} set to ${newStatus}. Notes: ${notes || '-'}`
+  )
+
+  return reply.send({
+    success: true,
+    data: updatedProfile,
+    message: `Aplikasi Mitra berhasil ${approve ? 'disetujui' : 'ditolak'}.`
   })
 })
 
