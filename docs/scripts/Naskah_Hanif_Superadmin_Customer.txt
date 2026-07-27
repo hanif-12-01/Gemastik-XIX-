@@ -1,0 +1,71 @@
+Teks Presentasi — Opening sampai Gap
+Slide 1 — Judul / Opening
+
+Durasi: ±25 detik
+
+Assalamualaikum warahmatullahi wabarakatuh.
+Selamat pagi/siang, Dewan Juri yang kami hormati.
+
+Sebelum masuk ke solusi, izinkan kami membawa Bapak/Ibu masuk ke satu situasi yang sangat dekat dengan kehidupan perkotaan.
+
+Setiap hari, jutaan orang bergerak menggunakan transportasi publik. Ada yang berangkat bekerja, kuliah, sekolah, atau mencari nafkah. Namun, di balik mobilitas itu, ada biaya yang sering tidak terlihat: udara yang mereka hirup saat menunggu.
+
+Karena pada akhirnya, manusia tidak menghirup rata-rata kualitas udara kota.
+Mereka menghirup udara di tempat mereka berdiri, menunggu, dan bernapas.
+
+Dari persoalan inilah kami menghadirkan gagasan VEAH: Vortex-Enzyme Air Harvester, teknologi pemurnian udara untuk mengurangi paparan polusi di terminal TransJakarta.
+
+Slide 2 — Latar Belakang Masalah
+
+Durasi: ±55 detik
+
+Permasalahan utama yang kami angkat adalah polusi udara sebagai ancaman kesehatan publik.
+
+Jakarta memiliki mobilitas masyarakat yang sangat tinggi. Transportasi publik seperti TransJakarta menjadi bagian penting dalam aktivitas harian masyarakat. Bahkan, dalam data yang kami gunakan, TransJakarta melayani sekitar 413 juta pelanggan per tahun, dengan sekitar 1,4 juta perjalanan harian.
+
+Namun, saat penumpang menunggu di terminal, mereka berada sangat dekat dengan sumber emisi kendaraan. Di titik inilah masalahnya menjadi lebih serius.
+
+Terminal bukan hanya tempat transit. Terminal adalah ruang tunggu, ruang aktivitas, dan ruang bernapas bagi banyak orang. Ketika ruang ini bersifat semi-terbuka, polutan seperti PM₂.₅, PM₁₀, VOC, dan partikel ultrahalus dapat terkumpul di area sekitar penumpang.
+
+Dampaknya, paparan ini tidak hanya terjadi sekali. Bagi pengguna rutin dan pekerja terminal, paparan terjadi berulang setiap hari. Dalam jangka panjang, kondisi ini dapat meningkatkan risiko gangguan pernapasan dan kardiovaskular.
+
+Jadi, masalah utamanya bukan hanya polusi lalu lintas.
+Masalah utamanya adalah paparan langsung manusia di ruang tunggu yang padat.
+
+Slide 3 — Kenapa Terminal TransJakarta?
+
+Durasi: ±45 detik
+
+Pertanyaannya, kenapa kami memilih terminal TransJakarta?
+
+Bukan karena tempat umum lain tidak penting. Tetapi karena terminal TransJakarta memiliki karakteristik yang sangat spesifik sebagai micro-hotspot.
+
+Terminal menjadi berbahaya ketika tiga hal bertemu dalam satu ruang:
+emisi kendaraan, dispersi udara yang terbatas, dan kepadatan manusia.
+
+Di terminal, kendaraan datang dan pergi secara terus-menerus. Penumpang menunggu di area yang sama. Sementara itu, ruang terminal yang semi-terbuka membuat aliran udara tidak sepenuhnya terkendali. Akibatnya, polutan dapat berada dekat dengan zona pernapasan manusia.
+
+Artinya, meskipun ukuran terminal relatif lokal, dampak paparannya besar karena banyak orang menghirup udara di titik yang sama secara berulang.
+
+Maka, terminal TransJakarta menjadi lokasi strategis untuk intervensi karena di sanalah polusi dan manusia terkonsentrasi dalam satu titik risiko.
+
+Slide 4 — Keterbatasan Solusi Saat Ini / Gap
+
+Durasi: ±45 detik
+
+Lalu, mengapa solusi yang ada belum cukup?
+
+Saat ini, banyak strategi pengendalian polusi berfokus pada source mitigation, seperti transisi kendaraan listrik, energi bersih, dan regulasi emisi. Strategi ini penting, tetapi membutuhkan waktu panjang, investasi besar, dan perubahan infrastruktur.
+
+Masalahnya, selama proses transisi itu berjalan, emisi kendaraan tetap terjadi setiap hari. Penumpang tetap menunggu. Pekerja terminal tetap terpapar. Artinya, risiko kesehatan tetap berlangsung sekarang.
+
+Di sisi lain, teknologi seperti air purifier atau HEPA filter lebih efektif digunakan pada ruang tertutup. Sementara terminal memiliki karakter semi-terbuka, aliran udara turbulen, dan paparan yang dinamis.
+
+Inilah gap yang ingin kami jawab:
+
+Belum ada sistem yang secara khusus dirancang untuk mengurangi paparan langsung manusia di micro-hotspot terminal semi-terbuka.
+
+Karena itu, kami tidak hanya membutuhkan solusi yang mengurangi emisi di masa depan.
+Kami juga membutuhkan solusi yang melindungi manusia sekarang.
+
+Dari kebutuhan inilah, VEAH kami hadirkan sebagai pendekatan exposure mitigation.

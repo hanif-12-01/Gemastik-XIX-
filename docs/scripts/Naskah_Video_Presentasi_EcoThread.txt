@@ -1,13 +1,15 @@
 NASKAH VIDEO PRESENTASI MVP ECOTHREAD - GEMASTIK XIX
 
 ANGGOTA TIM: STELLA, HANIF, TATA
-DURASI ESTIMASI: 5 Menit
+DURASI ESTIMASI: 5 Menit (Maksimal)
+ALOKASI WAKTU: Stella (1m 40d), Hanif (1m 40d), Tata & Penutup (1m 40d)
 TEMA: Penjelasan Mendetail Animasi, Prototipe Superadmin (City Hub), dan Aplikasi Mitra (EcoThread)
 
 ========================================================================
 
 --- BAGIAN 1: INTRO & DEMO ANIMASI (STORYBOARD) ---
 PEMBICARA: STELLA
+TARGET WAKTU: 1 Menit 40 Detik (00:00 - 01:40)
 
 [Visual: Logo EcoThread & Nama Tim. Tampilan layar pindah ke Stella. Kemudian layar menampilkan visual 'Gempuran Fast Fashion']
 
@@ -33,6 +35,7 @@ Nah, untuk melihat secara langsung wujud teknologi AI dan pusat kendali operasio
 
 --- BAGIAN 2: PROTOTIPE UTAMA / SUPERADMIN (CITY HUB) ---
 PEMBICARA: HANIF
+TARGET WAKTU: 1 Menit 40 Detik (01:40 - 03:20)
 
 [Visual: Transisi ke Hanif, kemudian layar beralih menampilkan antarmuka 'Overview' dan 'Inventory' dari aplikasi 'echothread-superadmin-app']
 
@@ -54,6 +57,7 @@ Dengan sistem orkestrasi yang se-canggih ini di pusat, bagaimana kami memastikan
 
 --- BAGIAN 3: APLIKASI MITRA & PENUTUP ---
 PEMBICARA: TATA
+    TARGET WAKTU: 1 Menit 40 Detik (03:20 - 05:00)
 
 [Visual: Transisi ke Tata, lalu layar menampilkan antarmuka 'ecothread-mitra-react' dalam format layar vertikal/Android smartphone]
 
