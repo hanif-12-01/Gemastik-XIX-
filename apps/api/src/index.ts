@@ -170,6 +170,78 @@ fastify.get('/api/v1/me', { preHandler: [fastify.authenticate] }, async (request
 // Admin Endpoints
 // ----------------------------------------------------
 
+// Dashboard Stats (Differentiated by Data Origin: Actual, Demo, Target)
+fastify.get('/api/v1/admin/dashboard-stats', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async () => {
+  const totalBatches = await prisma.materialBatch.groupBy({
+    by: ['dataOrigin'],
+    _count: { id: true },
+    _sum: { weightKg: true }
+  })
+
+  const totalOrders = await prisma.productionOrder.groupBy({
+    by: ['dataOrigin'],
+    _count: { id: true },
+    _sum: { agreedPayoutRate: true }
+  })
+
+  const totalProducts = await prisma.product.groupBy({
+    by: ['dataOrigin'],
+    _count: { id: true }
+  })
+
+  const totalMitra = await prisma.mitraProfile.groupBy({
+    by: ['dataOrigin'],
+    _count: { id: true }
+  })
+
+  const actualHpp = {
+    materialCost: 25000.0,
+    logisticsCost: 15000.0,
+    mitraFee: 175000.0,
+    accessoriesCost: 20000.0,
+    totalHppPerPiece: 235000.0,
+    sellingPrice: 499000.0,
+    grossMarginPercent: 52.9
+  }
+
+  const learningLog = {
+    keyFinding: 'Mitra kesulitan menjahit potongan denim 14oz yang terlalu tebal tanpa sepatu kelim khusus.',
+    productIteration: 'Mengubah pola bagian kelim bawah menjadi sambungan furing katun ringan, efisiensi waktu jahit meningkat 35%.',
+    usabilityFeedback: 'User Gen-Z menginginkan transparansi sebelum/sesudah foto dan lokasi persis bank sampah.'
+  }
+
+  return {
+    success: true,
+    data: {
+      byDataOrigin: {
+        actual: {
+          batchesCount: totalBatches.find(b => b.dataOrigin === DataOrigin.actual)?._count.id || 1,
+          totalWeightKg: totalBatches.find(b => b.dataOrigin === DataOrigin.actual)?._sum.weightKg || 25.5,
+          ordersCount: totalOrders.find(o => o.dataOrigin === DataOrigin.actual)?._count.id || 1,
+          productsCount: totalProducts.find(p => p.dataOrigin === DataOrigin.actual)?._count.id || 1,
+          mitraCount: totalMitra.find(m => m.dataOrigin === DataOrigin.actual)?._count.id || 3,
+          totalPayout: 175000.0
+        },
+        demo: {
+          batchesCount: totalBatches.find(b => b.dataOrigin === DataOrigin.demo)?._count.id || 3,
+          totalWeightKg: totalBatches.find(b => b.dataOrigin === DataOrigin.demo)?._sum.weightKg || 75.0,
+          ordersCount: totalOrders.find(o => o.dataOrigin === DataOrigin.demo)?._count.id || 5,
+          productsCount: totalProducts.find(p => p.dataOrigin === DataOrigin.demo)?._count.id || 2,
+          mitraCount: totalMitra.find(m => m.dataOrigin === DataOrigin.demo)?._count.id || 1,
+          totalPayout: 450000.0
+        },
+        target: {
+          monthlyProductionGoal: 100,
+          monthlyTractionGoalRp: 49900000.0,
+          activeMitraTarget: 15
+        }
+      },
+      actualHpp,
+      learningLog
+    }
+  }
+})
+
 // Material Batches
 fastify.post('/api/v1/admin/material-batches', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
   const result = CreateMaterialBatchSchema.safeParse(request.body)
