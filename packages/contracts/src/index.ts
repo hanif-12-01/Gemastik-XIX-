@@ -100,13 +100,17 @@ export const CreateProductionOrderSchema = z.object({
   agreedPayoutRate: z.number().positive()
 })
 
+// Accepts either a full URL or an uploaded local storage path (e.g. /uploads/xxx.jpg)
+const UploadedFileRef = z.string().min(3)
+
 export const SubmitQcEvidenceSchema = z.object({
-  frontPhoto: z.string().url(),
-  backPhoto: z.string().url(),
-  detailPhoto: z.string().url(),
+  frontPhoto: UploadedFileRef,
+  backPhoto: UploadedFileRef,
+  detailPhoto: UploadedFileRef,
   notes: z.string().optional(),
   actualSize: z.string().optional()
 })
+
 
 export const QcDecisionSchema = z.object({
   isApproved: z.boolean(),
@@ -139,9 +143,16 @@ export const CreateCustomerOrderSchema = z.object({
 })
 
 export const SubmitPaymentProofSchema = z.object({
-  paymentProofUrl: z.string().url(),
+  paymentProofUrl: UploadedFileRef,
   amount: z.number().positive()
 })
+
+// Admin-only decision on a submitted payment proof. User can NEVER self-verify.
+export const VerifyPaymentSchema = z.object({
+  approve: z.boolean(),
+  notes: z.string().optional()
+})
+
 
 // Standard API Response Format
 export interface ApiResponse<T = any> {

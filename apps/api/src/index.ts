@@ -2,7 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import { PrismaClient, Role, ProductionOrderStatus, PayoutStatus, DppVerificationState, DataOrigin } from '@prisma/client'
-import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
 import {
   LoginSchema,
   CreateMaterialBatchSchema,
@@ -13,8 +13,10 @@ import {
   CreateProductSchema,
   CreateCustomerOrderSchema,
   SubmitPaymentProofSchema,
+  VerifyPaymentSchema,
   isValidOrderTransition
 } from '@ecothread/contracts'
+
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -28,14 +30,27 @@ const fastify = Fastify({ logger: true })
 const PORT = Number(process.env.PORT || 4000)
 const HOST = process.env.HOST || '0.0.0.0'
 const JWT_SECRET = process.env.JWT_SECRET || 'ecothread-dev-secret-key-31072026'
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h'
+const DPP_PUBLIC_BASE_URL = process.env.DPP_PUBLIC_BASE_URL || 'http://localhost:5175'
 
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex')
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10)
+}
+
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  // Backward-compat: legacy SHA-256 hashes (64 hex chars) are rejected — force reseed/reset.
+  if (!hash.startsWith('$2')) return false
+  return bcrypt.compare(password, hash)
 }
 
 // Register plugins
 fastify.register(cors, {
-  origin: true,
+  origin: CORS_ORIGINS,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 })
@@ -43,6 +58,7 @@ fastify.register(cors, {
 fastify.register(jwt, {
   secret: JWT_SECRET
 })
+
 
 // Helper decorator for Authentication & RBAC
 fastify.decorate('authenticate', async (request: any, reply: any) => {
@@ -106,14 +122,13 @@ fastify.post('/api/v1/auth/login', async (request: any, reply: any) => {
   }
 
   const { email, password } = result.data
-  const hashedPassword = hashPassword(password)
 
   const user = await prisma.user.findUnique({
     where: { email },
     include: { userProfile: true, mitraProfile: true }
   })
 
-  if (!user || user.passwordHash !== hashedPassword) {
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return reply.status(401).send({ success: false, error: 'Email atau password salah.' })
   }
 
@@ -122,7 +137,8 @@ fastify.post('/api/v1/auth/login', async (request: any, reply: any) => {
     email: user.email,
     role: user.role,
     name: user.name
-  })
+  }, { expiresIn: JWT_EXPIRES_IN })
+
 
   await createAuditLog(user.id, 'USER_LOGIN', 'users', user.id, `User ${user.email} login`)
 
@@ -391,14 +407,28 @@ fastify.get('/api/v1/mitra/production-orders/:id', { preHandler: [fastify.authen
     return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
   }
 
+  // Ownership check: mitra hanya boleh melihat order miliknya sendiri. Admin boleh melihat semua.
+  if (request.user.role === Role.mitra && order.mitraUserId !== request.user.id) {
+    return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  }
+  if (request.user.role !== Role.mitra && request.user.role !== Role.admin) {
+    return reply.status(403).send({ success: false, error: 'Akses ditolak.' })
+  }
+
   return reply.send({ success: true, data: order })
 })
+
 
 fastify.post('/api/v1/mitra/production-orders/:id/accept', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
   const { id } = request.params as { id: string }
   const order = await prisma.productionOrder.findUnique({ where: { id } })
 
-  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan' })
+  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+
+  if (request.user.role === Role.mitra && order.mitraUserId !== request.user.id) {
+    return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  }
+
   if (!isValidOrderTransition(order.status as ProductionOrderStatus, ProductionOrderStatus.accepted)) {
     return reply.status(400).send({ success: false, error: `Transisi status dari '${order.status}' ke 'accepted' tidak valid.` })
   }
@@ -419,7 +449,15 @@ fastify.post('/api/v1/mitra/production-orders/:id/reject', { preHandler: [fastif
   const { reason } = (request.body as { reason?: string }) || {}
 
   const order = await prisma.productionOrder.findUnique({ where: { id } })
-  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan' })
+  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+
+  if (request.user.role === Role.mitra && order.mitraUserId !== request.user.id) {
+    return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  }
+
+  if (order.status !== ProductionOrderStatus.offered) {
+    return reply.status(400).send({ success: false, error: `Order hanya dapat ditolak jika berstatus 'offered', status saat ini '${order.status}'.` })
+  }
 
   const updated = await prisma.productionOrder.update({
     where: { id },
@@ -438,18 +476,42 @@ fastify.post('/api/v1/mitra/production-orders/:id/progress', { preHandler: [fast
   const { id } = request.params as { id: string }
   const { stepName, percentage, notes } = request.body as { stepName: string; percentage: number; notes?: string }
 
+  const order = await prisma.productionOrder.findUnique({ where: { id } })
+  if (!order) {
+    return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  }
+
+  if (request.user.role === Role.mitra && order.mitraUserId !== request.user.id) {
+    return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  }
+
+  const validProgressStatuses: ProductionOrderStatus[] = [
+    ProductionOrderStatus.accepted,
+    ProductionOrderStatus.kit_received,
+    ProductionOrderStatus.in_progress
+  ]
+
+  if (!validProgressStatuses.includes(order.status as ProductionOrderStatus)) {
+    return reply.status(400).send({
+      success: false,
+      error: `Progress hanya dapat diperbarui untuk order yang telah diterima atau dalam proses (status saat ini: '${order.status}').`
+    })
+  }
+
+  if (typeof percentage !== 'number' || percentage < 0 || percentage > 100) {
+    return reply.status(400).send({ success: false, error: 'Persentase progress harus berupa angka antara 0 dan 100.' })
+  }
+
   const progress = await prisma.productionProgress.create({
     data: {
       orderId: id,
-      stepName,
+      stepName: stepName || 'Update Produksi',
       percentage,
       notes
     }
   })
 
-  // Update order status to in_progress if acceptable
-  const order = await prisma.productionOrder.findUnique({ where: { id } })
-  if (order && (order.status === ProductionOrderStatus.accepted || order.status === ProductionOrderStatus.kit_received)) {
+  if (order.status === ProductionOrderStatus.accepted || order.status === ProductionOrderStatus.kit_received) {
     await prisma.productionOrder.update({
       where: { id },
       data: { status: ProductionOrderStatus.in_progress }
@@ -461,8 +523,31 @@ fastify.post('/api/v1/mitra/production-orders/:id/progress', { preHandler: [fast
 
 fastify.post('/api/v1/mitra/production-orders/:id/submit-qc', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
   const { id } = request.params as { id: string }
-  const result = SubmitQcEvidenceSchema.safeParse(request.body)
 
+  const order = await prisma.productionOrder.findUnique({ where: { id } })
+  if (!order) {
+    return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  }
+
+  if (request.user.role === Role.mitra && order.mitraUserId !== request.user.id) {
+    return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  }
+
+  const validQcStatuses: ProductionOrderStatus[] = [
+    ProductionOrderStatus.in_progress,
+    ProductionOrderStatus.kit_received,
+    ProductionOrderStatus.accepted,
+    ProductionOrderStatus.qc_revision
+  ]
+
+  if (!validQcStatuses.includes(order.status as ProductionOrderStatus)) {
+    return reply.status(400).send({
+      success: false,
+      error: `Submit QC tidak diizinkan untuk status order '${order.status}'.`
+    })
+  }
+
+  const result = SubmitQcEvidenceSchema.safeParse(request.body)
   if (!result.success) {
     return reply.status(400).send({ success: false, error: 'Bukti QC tidak lengkap (perlu foto depan, belakang, detail)', meta: result.error.format() })
   }
@@ -611,19 +696,12 @@ fastify.post('/api/v1/admin/products', { preHandler: [fastify.authenticate, chec
       category: data.category,
       beforeImageUrl: data.beforeImageUrl,
       afterImageUrl: data.afterImageUrl,
-      dataOrigin: DataOrigin.demo,
-      impactRecords: {
-        create: {
-          co2SavedKg: 12.4,
-          waterSavedLiters: 2450.0,
-          landfillDivertedKg: 1.8,
-          dataOrigin: DataOrigin.demo
-        }
-      }
+      dataOrigin: DataOrigin.demo
     }
   })
 
   await createAuditLog(request.user.id, 'CREATE_PRODUCT', 'products', product.id, `Produk ${productCode} dibuat`)
+
 
   return reply.status(201).send({ success: true, data: product })
 })
@@ -646,7 +724,7 @@ fastify.post('/api/v1/admin/products/:id/publish-dpp', { preHandler: [fastify.au
       productCode: product.productCode,
       productId: id,
       verificationState: DppVerificationState.database_verified,
-      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=http://localhost:5175/dpp/${product.productCode}`,
+      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${DPP_PUBLIC_BASE_URL}/dpp/${product.productCode}`,
       dataOrigin: DataOrigin.demo,
       dppVersions: {
         create: {
@@ -658,10 +736,11 @@ fastify.post('/api/v1/admin/products/:id/publish-dpp', { preHandler: [fastify.au
             category: product.category,
             materialSource: 'Bank Sampah Tekstil Majalaya',
             mitraName: product.productionOrder.mitraUser?.name || 'Ibu Ratna',
-            impactMetrics: product.impactRecords[0] || { co2SavedKg: 12.4, waterSavedLiters: 2450 }
+            impactMetrics: product.impactRecords[0] || { status: 'Belum dihitung' }
           })
         }
       }
+
     }
   })
 
@@ -788,33 +867,113 @@ fastify.post('/api/v1/customer-orders', { preHandler: [fastify.authenticate] }, 
 
 fastify.post('/api/v1/customer-orders/:id/payment-proof', { preHandler: [fastify.authenticate] }, async (request: any, reply: any) => {
   const { id } = request.params as { id: string }
-  const result = SubmitPaymentProofSchema.safeParse(request.body)
 
+  const order = await prisma.customerOrder.findUnique({ where: { id } })
+  if (!order) {
+    return reply.status(404).send({ success: false, error: 'Customer order tidak ditemukan.' })
+  }
+
+  if (request.user.role !== Role.admin && order.userId !== request.user.id) {
+    return reply.status(404).send({ success: false, error: 'Customer order tidak ditemukan.' })
+  }
+
+  const validPaymentStatuses = ['pending_payment', 'payment_rejected']
+  if (!validPaymentStatuses.includes(order.status)) {
+    return reply.status(400).send({
+      success: false,
+      error: `Bukti pembayaran tidak dapat diunggah untuk order dengan status '${order.status}'.`
+    })
+  }
+
+  const result = SubmitPaymentProofSchema.safeParse(request.body)
   if (!result.success) {
     return reply.status(400).send({ success: false, error: 'Bukti pembayaran tidak lengkap.', meta: result.error.format() })
   }
 
   const { paymentProofUrl, amount } = result.data
 
-  const payment = await prisma.payment.create({
-    data: {
-      customerOrderId: id,
-      amount,
-      paymentProofUrl,
-      isVerified: true,
-      verifiedAt: new Date()
-    }
+  // Server-authoritative nominal validation:
+  // Body amount harus cocok dengan totalAmount atau depositPaid dari order.
+  const expectedAmount = order.totalAmount
+  const expectedDeposit = order.depositPaid
+  if (Math.abs(amount - expectedAmount) > 0.01 && Math.abs(amount - expectedDeposit) > 0.01) {
+    return reply.status(400).send({
+      success: false,
+      error: `Nominal pembayaran (Rp ${amount.toLocaleString('id-ID')}) tidak sesuai dengan tagihan order (Total: Rp ${expectedAmount.toLocaleString('id-ID')}${expectedDeposit ? `, Deposit: Rp ${expectedDeposit.toLocaleString('id-ID')}` : ''}).`
+    })
+  }
+
+  const { payment, updatedOrder } = await prisma.$transaction(async (tx) => {
+    const payment = await tx.payment.create({
+      data: {
+        customerOrderId: id,
+        amount,
+        paymentProofUrl,
+        isVerified: false
+      }
+    })
+
+    const updatedOrder = await tx.customerOrder.update({
+      where: { id },
+      data: { status: 'payment_proof_submitted' }
+    })
+
+    return { payment, updatedOrder }
   })
 
-  const updatedOrder = await prisma.customerOrder.update({
-    where: { id },
-    data: { status: 'payment_verified' }
-  })
-
-  await createAuditLog(request.user.id, 'SUBMIT_PAYMENT_PROOF', 'payments', payment.id, `Bukti pembayaran diunggah untuk ${updatedOrder.orderCode}`)
+  await createAuditLog(request.user.id, 'SUBMIT_PAYMENT_PROOF', 'payments', payment.id, `Bukti pembayaran diunggah untuk ${updatedOrder.orderCode}, menunggu verifikasi admin`)
 
   return reply.send({ success: true, data: { payment, order: updatedOrder } })
 })
+
+// Admin-only: verify or reject a submitted payment proof. Customer can NEVER self-verify.
+fastify.post('/api/v1/admin/payments/:id/verify', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const result = VerifyPaymentSchema.safeParse(request.body)
+
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input tidak valid', meta: result.error.format() })
+  }
+
+  const { approve, notes } = result.data
+
+  const payment = await prisma.payment.findUnique({
+    where: { id },
+    include: { customerOrder: true }
+  })
+
+  if (!payment) {
+    return reply.status(404).send({ success: false, error: 'Pembayaran tidak ditemukan.' })
+  }
+
+  if (payment.isVerified && approve) {
+    return reply.status(400).send({ success: false, error: 'Pembayaran ini sudah diverifikasi sebelumnya.' })
+  }
+
+  const { updatedPayment, updatedOrder } = await prisma.$transaction(async (tx) => {
+    const updatedPayment = await tx.payment.update({
+      where: { id },
+      data: {
+        isVerified: approve,
+        verifiedAt: new Date(),
+        verifiedByUserId: request.user.id,
+        rejectionReason: approve ? null : (notes || 'Bukti pembayaran ditolak admin')
+      }
+    })
+
+    const updatedOrder = await tx.customerOrder.update({
+      where: { id: payment.customerOrderId },
+      data: { status: approve ? 'payment_verified' : 'payment_rejected' }
+    })
+
+    return { updatedPayment, updatedOrder }
+  })
+
+  await createAuditLog(request.user.id, 'VERIFY_PAYMENT', 'payments', id, `Pembayaran ${approve ? 'diverifikasi' : 'ditolak'} untuk order ${updatedOrder.orderCode}`)
+
+  return reply.send({ success: true, data: { payment: updatedPayment, order: updatedOrder } })
+})
+
 
 fastify.get('/api/v1/me/customer-orders', { preHandler: [fastify.authenticate] }, async (request: any, reply: any) => {
   const orders = await prisma.customerOrder.findMany({
@@ -823,6 +982,117 @@ fastify.get('/api/v1/me/customer-orders', { preHandler: [fastify.authenticate] }
     orderBy: { createdAt: 'desc' }
   })
   return reply.send({ success: true, data: orders })
+})
+
+// ----------------------------------------------------
+// Admin: List Endpoints for Frontend
+// ----------------------------------------------------
+
+fastify.get('/api/v1/admin/mitra', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const mitraUsers = await prisma.user.findMany({
+    where: { role: Role.mitra },
+    include: { mitraProfile: true, userProfile: true },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: mitraUsers })
+})
+
+fastify.get('/api/v1/admin/production-orders', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const orders = await prisma.productionOrder.findMany({
+    include: {
+      ecoKit: { include: { pattern: true } },
+      mitraUser: { include: { mitraProfile: true } },
+      productionProgress: true,
+      productionEvidence: true,
+      qcReviews: true,
+      payouts: true
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: orders })
+})
+
+fastify.get('/api/v1/admin/products', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const products = await prisma.product.findMany({
+    include: {
+      productionOrder: { include: { mitraUser: true } },
+      dppRecord: true,
+      impactRecords: true
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: products })
+})
+
+fastify.get('/api/v1/admin/customer-orders', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const orders = await prisma.customerOrder.findMany({
+    include: {
+      user: true,
+      customerOrderItems: { include: { catalogItem: true } },
+      payments: true
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: orders })
+})
+
+fastify.get('/api/v1/admin/payments', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const payments = await prisma.payment.findMany({
+    include: { customerOrder: { include: { user: true } } },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: payments })
+})
+
+// Mitra: Profile endpoint
+fastify.get('/api/v1/mitra/profile', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
+  const user = await prisma.user.findUnique({
+    where: { id: request.user.id },
+    include: {
+      mitraProfile: true,
+      userProfile: true
+    }
+  })
+  if (!user) {
+    return reply.status(404).send({ success: false, error: 'Profil tidak ditemukan.' })
+  }
+
+  // Compute mitra stats
+  const totalOrders = await prisma.productionOrder.count({ where: { mitraUserId: request.user.id } })
+  const completedOrders = await prisma.productionOrder.count({
+    where: { mitraUserId: request.user.id, status: 'completed' }
+  })
+  const totalPayout = await prisma.payout.aggregate({
+    where: { order: { mitraUserId: request.user.id }, status: 'paid' },
+    _sum: { amount: true }
+  })
+
+  return reply.send({
+    success: true,
+    data: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      mitraProfile: user.mitraProfile,
+      userProfile: user.userProfile,
+      stats: {
+        totalOrders,
+        completedOrders,
+        totalPayout: totalPayout._sum.amount || 0
+      }
+    }
+  })
+})
+
+// Mitra: Payout history
+fastify.get('/api/v1/mitra/payouts', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
+  const payouts = await prisma.payout.findMany({
+    where: { order: { mitraUserId: request.user.id } },
+    include: { order: true },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: payouts })
 })
 
 // Start Fastify Server

@@ -1,0 +1,84 @@
+[2m18.45.40[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because vite config has changed
+(node:30800) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/LOMBA/GEMASTIK/apps/user/postcss.config.js?t=1785152740218 is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to D:\LOMBA\GEMASTIK\apps\user\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Port 5173 is in use, trying another one...
+Port 5174 is in use, trying another one...
+Port 5175 is in use, trying another one...
+
+  [32m[1mVITE[22m v8.1.5[39m  [2mready in [0m[1m553[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5176[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[2m20.24.25[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m20.24.26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because lockfile has changed
+[2m20.24.26[22m [36m[1m[vite][22m[39m server restarted.
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5175[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m20.29.29[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to load PostCSS config (searchPath: D:/LOMBA/GEMASTIK/apps/user): [Error] Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+Error: Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+    at load (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21486:10)
+    at async Promise.all (index 1)
+    at async plugins (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21508:11)
+    at async processResult (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21546:13)[39m
+  Plugin: [35mvite:css[39m
+  File: [36mD:/LOMBA/GEMASTIK/apps/user/src/index.css[39m
+[2m20.29.29[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load PostCSS config (searchPath: D:/LOMBA/GEMASTIK/apps/user): [Error] Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+Error: Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+    at load (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21486:10)
+    at async Promise.all (index 1)
+    at async plugins (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21508:11)
+    at async processResult (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21546:13)
+  Plugin: [35mvite:css[39m
+  File: [36mD:/LOMBA/GEMASTIK/apps/user/src/index.css[39m
+[2m20.29.49[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to load PostCSS config (searchPath: D:/LOMBA/GEMASTIK/apps/user): [Error] Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+Error: Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+    at load (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21486:10)
+    at async Promise.all (index 1)
+    at async plugins (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21508:11)
+    at async processResult (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21546:13)[39m
+  Plugin: [35mvite:css[39m
+  File: [36mD:/LOMBA/GEMASTIK/apps/user/src/index.css[39m
+[2m20.30.48[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to load PostCSS config (searchPath: D:/LOMBA/GEMASTIK/apps/user): [Error] Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+Error: Loading PostCSS Plugin failed: Cannot find module 'autoprefixer'
+Require stack:
+- D:\LOMBA\GEMASTIK\apps\user\postcss.config.js
+
+(@D:\LOMBA\GEMASTIK\apps\user\postcss.config.js)
+    at load (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21486:10)
+    at async Promise.all (index 1)
+    at async plugins (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21508:11)
+    at async processResult (file:///D:/LOMBA/GEMASTIK/node_modules/.pnpm/vite@8.1.5_@types+node@22.2_5f4f61f64d92bc61482b44ee0a996820/node_modules/vite/dist/node/chunks/node.js:21546:13)[39m
+  Plugin: [35mvite:css[39m
+  File: [36mD:/LOMBA/GEMASTIK/apps/user/src/index.css[39m

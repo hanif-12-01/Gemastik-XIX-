@@ -1,6 +1,7 @@
 export class EcoThreadApiClient {
   private baseUrl: string
   private token: string | null = null
+  private on401Callback: (() => void) | null = null
 
   constructor(baseUrl: string = 'http://localhost:4000/api/v1') {
     this.baseUrl = baseUrl
@@ -8,6 +9,18 @@ export class EcoThreadApiClient {
 
   public setToken(token: string | null) {
     this.token = token
+  }
+
+  public getToken(): string | null {
+    return this.token
+  }
+
+  public isAuthenticated(): boolean {
+    return this.token !== null
+  }
+
+  public onUnauthorized(callback: () => void) {
+    this.on401Callback = callback
   }
 
   private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -24,6 +37,12 @@ export class EcoThreadApiClient {
       ...options,
       headers
     })
+
+    if (res.status === 401 && this.on401Callback) {
+      this.token = null
+      this.on401Callback()
+      throw new Error('Sesi telah berakhir. Silakan login kembali.')
+    }
 
     const json = await res.json()
     if (!res.ok || !json.success) {
@@ -55,6 +74,10 @@ export class EcoThreadApiClient {
   }
 
   // Admin
+  public async getAdminDashboardStats() {
+    return this.request('/admin/dashboard-stats')
+  }
+
   public async getMaterialBatches() {
     return this.request('/admin/material-batches')
   }
@@ -98,6 +121,13 @@ export class EcoThreadApiClient {
     })
   }
 
+  public async verifyPayment(paymentId: string, approve: boolean, notes?: string) {
+    return this.request(`/admin/payments/${paymentId}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ approve, notes })
+    })
+  }
+
   public async createProduct(payload: any) {
     return this.request('/admin/products', {
       method: 'POST',
@@ -117,10 +147,21 @@ export class EcoThreadApiClient {
     return this.request('/mitra/production-orders')
   }
 
+  public async getMitraOrderDetail(id: string) {
+    return this.request(`/mitra/production-orders/${id}`)
+  }
+
   public async acceptOrder(id: string) {
     return this.request(`/mitra/production-orders/${id}/accept`, {
       method: 'POST',
       body: JSON.stringify({})
+    })
+  }
+
+  public async rejectOrder(id: string, reason?: string) {
+    return this.request(`/mitra/production-orders/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
     })
   }
 
@@ -163,6 +204,40 @@ export class EcoThreadApiClient {
       method: 'POST',
       body: JSON.stringify(payload)
     })
+  }
+
+  public async getMyCustomerOrders() {
+    return this.request('/me/customer-orders')
+  }
+
+  // Admin: List endpoints
+  public async getAdminMitra() {
+    return this.request('/admin/mitra')
+  }
+
+  public async getAdminProductionOrders() {
+    return this.request('/admin/production-orders')
+  }
+
+  public async getAdminProducts() {
+    return this.request('/admin/products')
+  }
+
+  public async getAdminCustomerOrders() {
+    return this.request('/admin/customer-orders')
+  }
+
+  public async getAdminPayments() {
+    return this.request('/admin/payments')
+  }
+
+  // Mitra
+  public async getMitraProfile() {
+    return this.request('/mitra/profile')
+  }
+
+  public async getMitraPayouts() {
+    return this.request('/mitra/payouts')
   }
 }
 

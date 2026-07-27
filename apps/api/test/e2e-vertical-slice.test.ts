@@ -119,12 +119,17 @@ async function runFullVerticalSlice() {
   })
   assert(customerOrder.status === 'pending_payment', 'Pre-order status is pending_payment')
 
-  const payment = await userClient.submitPaymentProof(customerOrder.id, {
+  const paymentRes = await userClient.submitPaymentProof(customerOrder.id, {
     paymentProofUrl: 'https://images.unsplash.com/photo-1556742049-0a67daf40955?auto=format&fit=crop&q=80&w=600',
     amount: targetItem.depositAmount
   })
-  assert(payment.order.status === 'payment_verified', 'Customer order updated to payment_verified')
-  console.log(`✅ STEP 10: User placed pre-order (${customerOrder.orderCode}) & payment proof verified!`)
+  assert(paymentRes.order.status === 'payment_proof_submitted', 'Customer order updated to payment_proof_submitted')
+  assert(paymentRes.payment.isVerified === false, 'Payment is initially unverified')
+
+  const verifyRes = await adminClient.verifyPayment(paymentRes.payment.id, true)
+  assert(verifyRes.order.status === 'payment_verified', 'Customer order updated to payment_verified by Admin')
+  assert(verifyRes.payment.isVerified === true, 'Payment marked verified by Admin')
+  console.log(`✅ STEP 10: User placed pre-order (${customerOrder.orderCode}), payment proof submitted & verified by Admin!`)
 
   console.log('🎉 ==============================================================')
   console.log('🎉 ECOTHREAD MVP FULL E2E VERTICAL SLICE PASSED 100% SUCCESSFULLY!')

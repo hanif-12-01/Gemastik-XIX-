@@ -1,12 +1,56 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Home, Package, Cpu, Users, Truck, CheckCircle, Link2, Settings, Bell, Search, Plus, Upload, Eye, ChevronRight, TrendingUp, Recycle, Leaf, Box, Clock, MapPin, Star, AlertCircle, Check, X, Zap, Shield, QrCode, Layers, Filter, MoreVertical, Camera, Play, Pause, RefreshCw, Wallet, ArrowUpRight , Menu , ShieldCheck, Scissors } from 'lucide-react';
+import { Home, Package, Cpu, Users, Truck, CheckCircle, Link2, Settings, Bell, Search, Plus, Upload, Eye, ChevronRight, TrendingUp, Recycle, Leaf, Box, Clock, MapPin, Star, AlertCircle, Check, X, Zap, Shield, QrCode, Layers, Filter, MoreVertical, Camera, Play, Pause, RefreshCw, Wallet, ArrowUpRight , Menu , ShieldCheck, Scissors, LogOut } from 'lucide-react';
+import { api } from '@ecothread/api-client';
+import { useAuth } from './AuthContext';
 
 const EcoThreadDashboard = () => {
+  const { user, logout } = useAuth();
   const [activeView, setActiveView] = useState('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  // Mock data
+  // Real API state
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [inventoryData, setInventoryData] = useState([]);
+  const [mitraData, setMitraData] = useState([]);
+  const [ordersData, setOrdersData] = useState([]);
+  const [qcData, setQcData] = useState([]);
+  const [productsData, setProductsData] = useState([]);
+
+  // Fetch real data on mount
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [statsRes, matRes, mitraRes, ordersRes, qcRes, prodRes] = await Promise.allSettled([
+        api.getAdminDashboardStats(),
+        api.getMaterialBatches(),
+        api.getAdminMitra(),
+        api.getAdminProductionOrders(),
+        api.getQcReviews(),
+        api.getAdminProducts()
+      ]);
+
+      if (statsRes.status === 'fulfilled') setDashboardStats(statsRes.value);
+      if (matRes.status === 'fulfilled') setInventoryData(matRes.value || []);
+      if (mitraRes.status === 'fulfilled') setMitraData(mitraRes.value || []);
+      if (ordersRes.status === 'fulfilled') setOrdersData(ordersRes.value || []);
+      if (qcRes.status === 'fulfilled') setQcData(qcRes.value || []);
+      if (prodRes.status === 'fulfilled') setProductsData(prodRes.value || []);
+    } catch (err) {
+      console.error('Error fetching admin data:', err);
+      setError(err.message || 'Gagal memuat data dari server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const analyticsData = [
     { month: 'Jan', processed: 120, sold: 95, revenue: 37905000 },
     { month: 'Feb', processed: 180, sold: 142, revenue: 56658000 },
@@ -15,41 +59,6 @@ const EcoThreadDashboard = () => {
     { month: 'May', processed: 350, sold: 312, revenue: 124488000 },
     { month: 'Jun', processed: 420, sold: 385, revenue: 153615000 },
   ];
-
-  const [inventoryData, setInventoryData] = useState([
-    { id: 'INV-001', type: 'Denim', weight: '15kg', source: 'PT Tekstil Jaya', status: 'sterilized', date: '2026-04-14', quality: 'A' },
-    { id: 'INV-002', type: 'Cotton', weight: '22kg', source: 'CV Kain Makmur', status: 'processing', date: '2026-04-15', quality: 'B' },
-    { id: 'INV-003', type: 'Polyester', weight: '18kg', source: 'UD Serat Indah', status: 'received', date: '2026-04-16', quality: 'A' },
-    { id: 'INV-004', type: 'Canvas', weight: '12kg', source: 'PT Tekstil Jaya', status: 'sterilized', date: '2026-04-13', quality: 'A' },
-    { id: 'INV-005', type: 'Linen', weight: '8kg', source: 'CV Kain Makmur', status: 'sterilized', date: '2026-04-12', quality: 'B' },
-  ]);
-
-  const mitraData = [
-    { id: 'MTR-001', name: 'Ibu Siti Aminah', location: 'Cigondewah', skill: 'Jaket, Tas', rating: 4.9, completed: 156, capacity: 'available', phone: '0812-xxxx-xxxx' },
-    { id: 'MTR-002', name: 'Pak Ahmad Hidayat', location: 'Cimahi', skill: 'Kemeja, Celana', rating: 4.7, completed: 98, capacity: 'busy', phone: '0813-xxxx-xxxx' },
-    { id: 'MTR-003', name: 'Ibu Rina Wati', location: 'Bandung Kulon', skill: 'Tas, Aksesori', rating: 4.8, completed: 203, capacity: 'available', phone: '0857-xxxx-xxxx' },
-    { id: 'MTR-004', name: 'Pak Dedi Kurnia', location: 'Cibaduyut', skill: 'Jaket, Rompi', rating: 4.6, completed: 87, capacity: 'available', phone: '0878-xxxx-xxxx' },
-    { id: 'MTR-005', name: 'Ibu Yanti S.', location: 'Cigondewah', skill: 'Kemeja, Dress', rating: 4.9, completed: 178, capacity: 'busy', phone: '0821-xxxx-xxxx' },
-  ];
-
-  const [ordersData, setOrdersData] = useState([
-    { id: 'ORD-001', product: 'Upcycled Denim Jacket', mitra: 'Ibu Siti Aminah', status: 'in_progress', deadline: '2026-04-20', progress: 75 },
-    { id: 'ORD-002', product: 'Patchwork Tote Bag', mitra: 'Ibu Rina Wati', status: 'qc_pending', deadline: '2026-04-18', progress: 100 },
-    { id: 'ORD-003', product: 'Canvas Messenger Bag', mitra: 'Pak Ahmad Hidayat', status: 'assigned', deadline: '2026-04-22', progress: 15 },
-    { id: 'ORD-004', product: 'Vintage Quilt Vest', mitra: 'Pak Dedi Kurnia', status: 'in_progress', deadline: '2026-04-21', progress: 45 },
-    { id: 'ORD-005', product: 'Eco Cotton Shirt', mitra: 'Ibu Yanti S.', status: 'completed', deadline: '2026-04-15', progress: 100 },
-  ]);
-
-  const [qcData, setQcData] = useState([
-    { id: 'QC-001', orderId: 'ORD-002', product: 'Patchwork Tote Bag', mitra: 'Ibu Rina Wati', submitted: '2026-04-16', status: 'pending' },
-    { id: 'QC-002', orderId: 'ORD-005', product: 'Eco Cotton Shirt', mitra: 'Ibu Yanti S.', submitted: '2026-04-15', status: 'approved' },
-  ]);
-
-  const [blockchainData, setBlockchainData] = useState([
-    { id: 'DPP-001', productId: 'PRD-089', txHash: '0x7f9a...3c2e', status: 'minted', timestamp: '2026-04-15 14:32', carbon: '2.3kg' },
-    { id: 'DPP-002', productId: 'PRD-090', txHash: '0x8e2b...9f1a', status: 'minted', timestamp: '2026-04-15 15:18', carbon: '1.8kg' },
-    { id: 'DPP-003', productId: 'PRD-091', txHash: 'pending...', status: 'queued', timestamp: '-', carbon: '2.1kg' },
-  ]);
 
   const pieData = [
     { name: 'Denim', value: 35, color: '#0F6E56' },
@@ -1238,6 +1247,24 @@ Dana pencairan ke e-Wallet (EcoPay) Mitra sebesar Rp 150.000 atas nama ${item.mi
             <h2 className="text-xl font-bold text-gray-800 capitalize">
               {menuItems.find(n => n.id === activeView)?.label || activeView}
             </h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 bg-stone-50 px-3 py-1.5 rounded-xl border border-stone-200">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">
+                ADM
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-xs font-bold text-stone-800 leading-none">{user?.name || 'Super Admin'}</p>
+                <p className="text-[10px] text-stone-500 leading-none mt-1">{user?.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              title="Keluar dari Admin"
+              className="p-2 hover:bg-rose-50 text-stone-500 hover:text-rose-600 rounded-xl transition-colors border border-stone-200 hover:border-rose-200"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto">

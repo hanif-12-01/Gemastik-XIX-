@@ -44,9 +44,17 @@ async function testUserPreorderFlow() {
     paymentProofUrl: 'https://images.unsplash.com/photo-1556742049-0a67daf40955?auto=format&fit=crop&q=80&w=600',
     amount: heroItem.depositAmount
   })
-  assert(paymentSubmission.payment.isVerified === true, 'Payment proof verified')
-  assert(paymentSubmission.order.status === 'payment_verified', 'Customer order status updated to payment_verified')
-  console.log(`  ✓ Payment proof submitted and verified (Order status: ${paymentSubmission.order.status})`)
+  assert(paymentSubmission.payment.isVerified === false, 'Payment proof starts unverified')
+  assert(paymentSubmission.order.status === 'payment_proof_submitted', 'Customer order status updated to payment_proof_submitted')
+  console.log(`  ✓ Payment proof submitted by customer (Order status: ${paymentSubmission.order.status})`)
+
+  // 5b. Admin Verifies Payment
+  const adminClient = new EcoThreadApiClient('http://localhost:4000/api/v1')
+  await adminClient.login('admin@ecothread.local', 'Password123!')
+  const adminVerifyRes = await adminClient.verifyPayment(paymentSubmission.payment.id, true)
+  assert(adminVerifyRes.payment.isVerified === true, 'Payment marked verified by Admin')
+  assert(adminVerifyRes.order.status === 'payment_verified', 'Customer order status updated to payment_verified by Admin')
+  console.log(`  ✓ Payment verified by Admin (Order status: ${adminVerifyRes.order.status})`)
 
   // 6. User Views Personal Order History
   const myOrders = await userClient.request('/me/customer-orders')

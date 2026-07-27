@@ -16,11 +16,11 @@ async function testAdminMitraFlow() {
   // 1. Create a second Mitra user for isolation testing
   let mitra2User = await prisma.user.findUnique({ where: { email: 'mitra2@ecothread.local' } })
   if (!mitra2User) {
-    const crypto = await import('crypto')
+    const bcrypt = await import('bcryptjs')
     mitra2User = await prisma.user.create({
       data: {
         email: 'mitra2@ecothread.local',
-        passwordHash: crypto.createHash('sha256').update('Password123!').digest('hex'),
+        passwordHash: bcrypt.hashSync('Password123!', 10),
         role: 'mitra',
         name: 'Pak Budi (Mitra Penjahit Cimahi)',
         mitraProfile: {

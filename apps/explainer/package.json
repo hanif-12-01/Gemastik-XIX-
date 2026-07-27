@@ -11,6 +11,7 @@
     "@ecothread/api-client": "workspace:*",
     "@ecothread/contracts": "workspace:*",
     "lucide-react": "^1.8.0",
+    "framer-motion": "^12.4.10",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

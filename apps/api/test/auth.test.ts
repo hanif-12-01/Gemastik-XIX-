@@ -1,11 +1,7 @@
-import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
 import { PrismaClient, Role } from '@prisma/client'
 
 const prisma = new PrismaClient()
-
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex')
-}
 
 async function runAuthTests() {
   console.log('🧪 Starting ECOT-MVP-002 Auth & RBAC Integration Tests...')
@@ -21,12 +17,12 @@ async function runAuthTests() {
 
   console.log('  ✓ Seed users exist in database')
 
-  // 2. Verify Password Hashing
-  const validHash = hashPassword('Password123!')
-  if (admin.passwordHash !== validHash) {
+  // 2. Verify Password Hashing (Bcrypt)
+  const isValidPassword = bcrypt.compareSync('Password123!', admin.passwordHash)
+  if (!isValidPassword) {
     throw new Error('❌ Admin password hash mismatch!')
   }
-  console.log('  ✓ Password hash verification passed')
+  console.log('  ✓ Bcrypt password hash verification passed')
 
   // 3. Verify RBAC Roles
   if (admin.role !== Role.admin) throw new Error('❌ Admin role check failed')

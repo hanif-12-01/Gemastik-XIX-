@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Home, Package, BookOpen, Camera, Wallet, User, Bell, ChevronRight, ChevronLeft, Check, Clock, AlertCircle, Star, MapPin, Phone, CheckCircle, Circle, Upload, X, Play, Pause, RotateCcw, TrendingUp, Calendar, CreditCard, HelpCircle, Settings, LogOut, Award, Heart, Scissors, Eye, Send, Image, Truck, Gift, Info, ArrowLeft, MessageCircle, Smartphone, ShieldCheck, Banknote, Timer, Target, Sparkles, ThumbsUp, Wifi, Signal, BatteryFull } from 'lucide-react';
+import { api } from '@ecothread/api-client';
+import { useAuth } from './AuthContext';
 
 // ============================================
 // ECOTHREAD MITRA - APLIKASI PENJAHIT
@@ -8,6 +10,7 @@ import { Home, Package, BookOpen, Camera, Wallet, User, Bell, ChevronRight, Chev
 // ============================================
 
 const App = () => {
+  const { user: authUser, logout } = useAuth();
   // ============================================
   // STATE MANAGEMENT
   // ============================================
@@ -20,10 +23,12 @@ const App = () => {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // User Profile Data
-  const [userProfile] = useState({
-    name: 'Ibu Siti Aminah',
+  const [userProfile, setUserProfile] = useState({
+    name: authUser?.name || 'Ibu Siti Aminah',
     phone: '0812-3456-7890',
     location: 'Cigondewah, Bandung',
     rating: 4.9,
@@ -34,71 +39,64 @@ const App = () => {
     profileComplete: 95
   });
 
-  // Orders Data
-  const [orders, setOrders] = useState([
-    {
-      id: 'ECO-0089',
-      product: 'Jaket Denim Upcycle',
-      type: 'Jaket',
-      status: 'in_progress',
-      progress: 60,
-      deadline: '20 Apr 2026',
-      daysLeft: 3,
-      fee: 125000,
-      materials: ['Denim biru 2.5m', 'Resleting YKK 50cm', 'Kancing (6)', 'NFC Tag'],
-      size: 'M',
-      notes: 'Pelanggan minta kantong tambahan di dalam',
-      receivedDate: '14 Apr 2026',
-      customerCity: 'Jakarta'
-    },
-    {
-      id: 'ECO-0088',
-      product: 'Tas Tote Patchwork',
-      type: 'Tas',
-      status: 'new',
-      progress: 0,
-      deadline: '22 Apr 2026',
-      daysLeft: 5,
-      fee: 95000,
-      materials: ['Kain perca campuran 1.5m', 'Tali tas', 'NFC Tag'],
-      size: 'Standard',
-      notes: 'Desain standar',
-      receivedDate: '17 Apr 2026',
-      customerCity: 'Bandung'
-    },
-    {
-      id: 'ECO-0085',
-      product: 'Rompi Vintage',
-      type: 'Rompi',
-      status: 'qc_review',
-      progress: 100,
-      deadline: '18 Apr 2026',
-      daysLeft: 1,
-      fee: 110000,
-      materials: ['Kain wool campuran', 'Kancing kayu (5)', 'NFC Tag'],
-      size: 'L',
-      notes: 'Sudah dikirim foto untuk QC',
-      receivedDate: '10 Apr 2026',
-      customerCity: 'Surabaya'
-    },
-    {
-      id: 'ECO-0082',
-      product: 'Jaket Kanvas',
-      type: 'Jaket',
-      status: 'completed',
-      progress: 100,
-      deadline: '15 Apr 2026',
-      daysLeft: 0,
-      fee: 130000,
-      materials: ['Kanvas coklat 3m', 'Resleting', 'Kancing'],
-      size: 'L',
-      notes: 'Selesai tepat waktu',
-      receivedDate: '8 Apr 2026',
-      customerCity: 'Medan',
-      completedDate: '14 Apr 2026',
-      rating: 5
-    },
-  ]);
+  const [orders, setOrders] = useState([]);
+
+  // Fetch real data from backend
+  const fetchMitraData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [profileRes, ordersRes] = await Promise.allSettled([
+        api.getMitraProfile(),
+        api.getMitraOrders()
+      ]);
+
+      if (profileRes.status === 'fulfilled' && profileRes.value) {
+        const p = profileRes.value;
+        setUserProfile(prev => ({
+          ...prev,
+          name: p.name || prev.name,
+          location: p.mitraProfile?.location || prev.location,
+          rating: p.mitraProfile?.rating || prev.rating,
+          totalOrders: p.stats?.completedOrders || prev.totalOrders,
+          skills: p.mitraProfile?.skills ? JSON.parse(p.mitraProfile.skills) : prev.skills
+        }));
+      }
+
+      if (ordersRes.status === 'fulfilled' && ordersRes.value) {
+        const rawOrders = ordersRes.value;
+        const formatted = rawOrders.map((o) => ({
+          id: o.orderCode || o.id,
+          realId: o.id,
+          product: o.ecoKit?.targetProduct || 'Produk Upcycle',
+          type: o.ecoKit?.targetProduct ? o.ecoKit.targetProduct.split(' ')[0] : 'Pakaian',
+          status: o.status === 'offered' ? 'new' : (o.status === 'submitted_to_qc' ? 'qc_pending' : o.status),
+          rawStatus: o.status,
+          progress: o.status === 'completed' ? 100 : (o.status === 'in_progress' ? 50 : 0),
+          deadline: o.targetCompletion ? new Date(o.targetCompletion).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '20 Apr 2026',
+          daysLeft: 3,
+          fee: o.agreedPayoutRate || 125000,
+          materials: ['Kain limbah sanitasi', 'Aksesori & NFC Tag'],
+          size: o.ecoKit?.pattern?.size || 'M',
+          notes: 'Instruksi sesuai Eco-Kit',
+          receivedDate: new Date(o.createdAt).toLocaleDateString('id-ID'),
+          customerCity: 'Bandung'
+        }));
+        setOrders(formatted);
+      }
+    } catch (err) {
+      console.error('Error fetching mitra data:', err);
+      setError('Gagal memuat data dari server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMitraData();
+  }, []);
+
+
 
   // Earnings Data
   const [earnings] = useState({
