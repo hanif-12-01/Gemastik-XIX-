@@ -165,6 +165,13 @@ export const PublicHeader: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }} className="desktop-only">
             <Badge variant="success">GEMASTIK XIX</Badge>
             <Link
+              to="/account"
+              className="btn"
+              style={{ background: 'var(--color-surface-2)', color: '#FFF', border: '1px solid var(--color-border)', padding: '0.55rem 1rem', fontSize: '0.875rem' }}
+            >
+              Akun Saya
+            </Link>
+            <Link
               to={ROUTES.PUBLIC.PORTAL}
               className="btn btn-primary"
               style={{ padding: '0.55rem 1.25rem', fontSize: '0.875rem', borderRadius: 'var(--radius-md)' }}

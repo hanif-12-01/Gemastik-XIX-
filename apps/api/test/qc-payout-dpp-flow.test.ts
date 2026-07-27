@@ -40,6 +40,7 @@ async function testQcPayoutDppFlow() {
 
   // 3. Admin performs QC Review with checklist & approves
   const qcDecision = await adminClient.submitQcDecision(order.id, {
+    decision: 'approved',
     isApproved: true,
     decisionNotes: 'QC Lolos 100%. Jahitan sangat rapi dan presisi.',
     checkFront: true,
@@ -77,7 +78,8 @@ async function testQcPayoutDppFlow() {
     afterImageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=600'
   })
 
-  const dppRecord = await adminClient.publishDpp(product.id)
+  const publishRes = await adminClient.publishDpp(product.id)
+  const dppRecord = publishRes.dppRecord || publishRes
   assert(dppRecord.verificationState === 'database_verified', 'DPP verification state is database_verified')
   console.log(`  ✓ Product created (${product.productCode}) and DPP published (State: ${dppRecord.verificationState})`)
 

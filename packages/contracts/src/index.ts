@@ -306,21 +306,48 @@ export const PublishDppSchema = z.object({
 
 
 
+export const RegisterCustomerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, 'Password minimal 8 karakter'),
+  name: z.string().min(2, 'Nama minimal 2 karakter'),
+  phone: z.string().min(8, 'Nomor telepon minimal 8 karakter').optional(),
+  address: z.string().min(5, 'Alamat minimal 5 karakter').optional(),
+  city: z.string().optional()
+})
+
+export const UpdateCustomerProfileSchema = z.object({
+  name: z.string().min(2).optional(),
+  phone: z.string().min(8).optional(),
+  address: z.string().min(5).optional(),
+  city: z.string().optional(),
+  postalCode: z.string().optional(),
+  deliveryNotes: z.string().optional()
+})
+
 export const CreateCustomerOrderSchema = z.object({
   catalogItemId: z.string().uuid(),
   quantity: z.number().int().positive().default(1),
-  shippingAddress: z.string().min(5)
+  shippingAddress: z.string().min(5),
+  customerNotes: z.string().optional()
 })
 
 export const SubmitPaymentProofSchema = z.object({
   paymentProofUrl: UploadedFileRef,
-  amount: z.number().positive()
+  amount: z.number().positive(),
+  paymentMethod: z.string().default('bank_transfer')
 })
 
 // Admin-only decision on a submitted payment proof. User can NEVER self-verify.
 export const VerifyPaymentSchema = z.object({
-  approve: z.boolean(),
+  approve: z.boolean().optional(),
+  decision: z.enum(['approved', 'rejected']).optional(),
+  rejectionReason: z.string().optional(),
   notes: z.string().optional()
+}).superRefine((data, ctx) => {
+  const isRejected = data.decision === 'rejected' || data.approve === false
+  if (isRejected && !data.rejectionReason && !data.notes) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Alasan penolakan wajib diisi', path: ['rejectionReason'] })
+  }
 })
 
 

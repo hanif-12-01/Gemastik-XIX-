@@ -35,6 +35,7 @@ export const AdminLayout: React.FC = () => {
     { label: 'Eco-Kits', path: '/admin/eco-kits', icon: Package },
     { label: 'Production Orders', path: '/admin/orders', icon: FileCheck },
     { label: 'Review QC', path: '/admin/qc', icon: ShieldCheck },
+    { label: 'Bayar Pelanggan', path: '/admin/payments', icon: CreditCard },
     { label: 'Manajemen Payout', path: '/admin/payouts', icon: CreditCard },
     { label: 'Produk & DPP', path: '/admin/products', icon: QrCode }
   ]

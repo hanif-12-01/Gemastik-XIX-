@@ -453,6 +453,7 @@ async function main() {
       category: 'Outerwear',
       beforeImageUrl: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=600',
       afterImageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=600',
+      status: 'published',
       isPublishedDpp: true,
       dataOrigin: DataOrigin.demo,
       productMaterials: {

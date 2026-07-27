@@ -24,6 +24,7 @@ interface AuthContextType {
   status: 'initializing' | 'authenticated' | 'anonymous'
   user: User | null
   login: (email: string, password: string) => Promise<User>
+  setToken: (token: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -80,6 +81,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return userData
   }
 
+  const setToken = async (token: string): Promise<void> => {
+    AuthStorage.setToken(token)
+    apiClient.setToken(token)
+    try {
+      const userData = await apiClient.getMe()
+      setUser(userData)
+      setStatus('authenticated')
+    } catch {
+      setStatus('anonymous')
+    }
+  }
+
   const logout = async (): Promise<void> => {
     await apiClient.logout()
     AuthStorage.clearToken()
@@ -99,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ status, user, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ status, user, login, setToken, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

@@ -60,6 +60,24 @@ export const PortalSelectionPage: React.FC = () => {
             secondaryActionText="Daftar Akun Mitra Baru"
             secondaryActionUrl={ROUTES.AUTH.MITRA_REGISTER}
           />
+
+          {/* Customer Portal */}
+          <PortalCard
+            role="customer"
+            title="Portal Pelanggan"
+            subtitle="Konsumen Fashion Sirkular"
+            description="Jelajahi katalog pakaian upcycled terverifikasi DPP, buat pre-order, unggah bukti pembayaran deposit, dan lacak status pesanan."
+            noticeTitle="Akses Pelanggan Publik"
+            noticeText={
+              <>
+                Pendaftaran akun pelanggan terbuka untuk publik secara gratis. Pre-order menggunakan sistem deposit dengan bukti transfer terverifikasi.
+              </>
+            }
+            primaryActionText="Masuk Akun Pelanggan"
+            primaryActionUrl="/auth/customer/login"
+            secondaryActionText="Daftar Akun Pelanggan Baru"
+            secondaryActionUrl="/auth/customer/register"
+          />
         </div>
 
         {/* Security Notice Summary */}

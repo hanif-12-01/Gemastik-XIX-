@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Alert } from '../../components/feedback/Alert'
 import { LoadingSpinner } from '../../components/feedback/LoadingSpinner'
 import { apiClient } from '../../lib/api'
-import { ArrowLeft, QrCode, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, QrCode, ShieldCheck, ShoppingBag } from 'lucide-react'
 
 export const ProductDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>()
@@ -107,7 +107,10 @@ export const ProductDetailPage: React.FC = () => {
               </Card>
 
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <Link to={ROUTES.PUBLIC.getDpp(p.productCode)} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
+                <Link to={`/checkout/${p.slug}`} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', background: 'var(--color-primary)', color: '#000', fontWeight: 800 }}>
+                  <ShoppingBag size={18} /> Pre-Order Sekarang
+                </Link>
+                <Link to={ROUTES.PUBLIC.getDpp(p.productCode)} className="btn" style={{ flex: 1, justifyContent: 'center', background: 'var(--color-surface-2)', color: '#FFF', border: '1px solid var(--color-border)' }}>
                   <QrCode size={18} /> Buka Digital Product Passport (DPP)
                 </Link>
               </div>

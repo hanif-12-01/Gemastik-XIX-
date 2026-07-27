@@ -52,6 +52,35 @@ export class EcoThreadApiClient {
     return json.data
   }
 
+  public async uploadQcPhoto(file: File): Promise<{ url: string; filename: string; mimeType: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const headers: Record<string, string> = {}
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`
+    }
+
+    const res = await fetch(`${this.baseUrl}/uploads/qc`, {
+      method: 'POST',
+      headers,
+      body: formData
+    })
+
+    if (res.status === 401 && this.on401Callback) {
+      this.token = null
+      this.on401Callback()
+      throw new Error('Sesi telah berakhir. Silakan login kembali.')
+    }
+
+    const json = await res.json()
+    if (!res.ok || !json.success) {
+      throw new Error(json.error || `HTTP Error ${res.status}`)
+    }
+
+    return json.data
+  }
+
   // Generic HTTP helpers
   public async get<T = any>(endpoint: string): Promise<{ success: boolean; data: T }> {
     const data = await this.request<T>(endpoint, { method: 'GET' })
@@ -308,13 +337,6 @@ export class EcoThreadApiClient {
     })
   }
 
-  public async verifyPayment(paymentId: string, approve: boolean, notes?: string) {
-    return this.request(`/admin/payments/${paymentId}/verify`, {
-      method: 'POST',
-      body: JSON.stringify({ approve, notes })
-    })
-  }
-
   public async createProduct(payload: any) {
     return this.request('/admin/products', {
       method: 'POST',
@@ -428,8 +450,44 @@ export class EcoThreadApiClient {
     return this.request('/admin/customer-orders')
   }
 
+  public async registerCustomer(payload: any) {
+    return this.request('/auth/customer/register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async getCustomerProfile() {
+    return this.request('/customer/profile')
+  }
+
+  public async updateCustomerProfile(payload: any) {
+    return this.request('/customer/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async getCustomerOrderDetail(id: string) {
+    return this.request(`/customer-orders/${id}`)
+  }
+
   public async getAdminPayments() {
     return this.request('/admin/payments')
+  }
+
+  public async getAdminPaymentDetail(id: string) {
+    return this.request(`/admin/payments/${id}`)
+  }
+
+  public async verifyPayment(id: string, payloadOrApprove: any, notes?: string) {
+    const body = typeof payloadOrApprove === 'boolean'
+      ? { approve: payloadOrApprove, notes }
+      : payloadOrApprove
+    return this.request(`/admin/payments/${id}/verify`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    })
   }
 
   // Mitra

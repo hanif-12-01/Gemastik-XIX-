@@ -52,6 +52,19 @@ import { MitraProfilePage } from '../pages/mitra/MitraProfilePage'
 import { MitraPayoutsPage } from '../pages/mitra/MitraPayoutsPage'
 import { MitraVerificationStatusPage } from '../pages/mitra/MitraVerificationStatusPage'
 
+// Customer Pages (Roadmap 6)
+import { RegisterCustomerPage } from '../pages/customer/RegisterCustomerPage'
+import { CustomerLoginPage } from '../pages/customer/CustomerLoginPage'
+import { CustomerAccountPage } from '../pages/customer/CustomerAccountPage'
+import { CustomerProfilePage } from '../pages/customer/CustomerProfilePage'
+import { CustomerOrdersPage } from '../pages/customer/CustomerOrdersPage'
+import { CustomerOrderDetailPage } from '../pages/customer/CustomerOrderDetailPage'
+import { CheckoutPage } from '../pages/customer/CheckoutPage'
+
+// Admin Payments (Roadmap 6)
+import { AdminPaymentsPage } from '../pages/admin/AdminPaymentsPage'
+import { AdminPaymentDetailPage } from '../pages/admin/AdminPaymentDetailPage'
+
 // Error Pages
 import { NotFoundPage } from '../pages/errors/NotFoundPage'
 import { ForbiddenPage } from '../pages/errors/ForbiddenPage'
@@ -68,7 +81,8 @@ export const router = createBrowserRouter([
       { path: 'portal', element: <PortalSelectionPage /> },
       { path: 'catalog', element: <CatalogPage /> },
       { path: 'catalog/:slug', element: <ProductDetailPage /> },
-      { path: 'dpp/:productCode', element: <PublicDppPage /> }
+      { path: 'dpp/:productCode', element: <PublicDppPage /> },
+      { path: 'checkout/:catalogItemId', element: <CheckoutPage /> }
     ]
   },
 
@@ -82,12 +96,33 @@ export const router = createBrowserRouter([
       { path: 'admin/invite/:token', element: <AdminInvitationPage /> },
       { path: 'mitra/login', element: <MitraLoginPage /> },
       { path: 'mitra/register', element: <MitraRegistrationPage /> },
+      { path: 'customer/register', element: <RegisterCustomerPage /> },
+      { path: 'customer/login', element: <CustomerLoginPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password/:token', element: <ResetPasswordPage /> }
     ]
   },
 
-  // Protected Admin Routes (Roadmap 3)
+  // Protected Customer Routes (Roadmap 6)
+  {
+    path: '/account',
+    element: (
+      <ProtectedRoute>
+        <RoleGuard allowedRoles={['user', 'admin']}>
+          <PublicLayout />
+        </RoleGuard>
+      </ProtectedRoute>
+    ),
+    errorElement: <UnexpectedErrorPage />,
+    children: [
+      { index: true, element: <CustomerAccountPage /> },
+      { path: 'profile', element: <CustomerProfilePage /> },
+      { path: 'orders', element: <CustomerOrdersPage /> },
+      { path: 'orders/:id', element: <CustomerOrderDetailPage /> }
+    ]
+  },
+
+  // Protected Admin Routes (Roadmap 3, 5, 6)
   {
     path: '/admin',
     element: (
@@ -114,7 +149,10 @@ export const router = createBrowserRouter([
       { path: 'payouts/:id', element: <AdminPayoutDetailPage /> },
       { path: 'products', element: <AdminProductsPage /> },
       { path: 'products/new', element: <AdminCreateProductPage /> },
-      { path: 'products/:id', element: <AdminProductDetailPage /> }
+      { path: 'products/:id', element: <AdminProductDetailPage /> },
+      // Roadmap 6
+      { path: 'payments', element: <AdminPaymentsPage /> },
+      { path: 'payments/:id', element: <AdminPaymentDetailPage /> }
     ]
   },
 

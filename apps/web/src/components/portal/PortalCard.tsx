@@ -6,7 +6,7 @@ import { Alert } from '../feedback/Alert'
 import { ArrowRight } from 'lucide-react'
 
 interface PortalCardProps {
-  role: 'admin' | 'mitra'
+  role: 'admin' | 'mitra' | 'customer'
   title: string
   subtitle: string
   description: string

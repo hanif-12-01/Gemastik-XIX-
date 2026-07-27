@@ -69,6 +69,7 @@ async function runFullVerticalSlice() {
 
   // Step 6: Admin reviews QC & approves
   const qcReview = await adminClient.submitQcDecision(order.id, {
+    decision: 'approved',
     isApproved: true,
     decisionNotes: 'QC Lolos 100%. Sangat presisi.',
     checkFront: true,
@@ -97,7 +98,8 @@ async function runFullVerticalSlice() {
     afterImageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=600'
   })
 
-  const dpp = await adminClient.publishDpp(product.id)
+  const publishDppRes = await adminClient.publishDpp(product.id)
+  const dpp = publishDppRes.dppRecord || publishDppRes
   assert(dpp.verificationState === 'database_verified', 'DPP verificationState is database_verified')
   console.log(`✅ STEP 8: Product created (${product.productCode}) & Dynamic DPP published`)
 
