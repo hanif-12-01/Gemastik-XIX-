@@ -1,16 +1,16 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
-import { Navbar } from '../../components/navigation/Navbar'
-import { Footer } from '../../components/navigation/Footer'
+import { PublicHeader } from '../../components/navigation/PublicHeader'
+import { PublicFooter } from '../../components/navigation/PublicFooter'
 
 export const PublicLayout: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Navbar />
-      <main style={{ flex: 1 }}>
+      <PublicHeader />
+      <main id="main-content" style={{ flex: 1 }}>
         <Outlet />
       </main>
-      <Footer />
+      <PublicFooter />
     </div>
   )
 }
