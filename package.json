@@ -7,6 +7,10 @@
     "build": "pnpm --filter \"./packages/*\" build && pnpm --filter \"./apps/*\" build",
     "lint": "pnpm --filter \"*\" lint",
     "test": "pnpm --filter \"*\" test",
+    "web:dev": "pnpm --filter @ecothread/web dev",
+    "web:build": "pnpm --filter @ecothread/web build",
+    "web:typecheck": "pnpm --filter @ecothread/web typecheck",
+    "web:lint": "pnpm --filter @ecothread/web lint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts"
