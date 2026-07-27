@@ -327,8 +327,8 @@ fastify.post('/api/v1/mitra/production-orders/:id/accept', { preHandler: [fastif
   const order = await prisma.productionOrder.findUnique({ where: { id } })
 
   if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan' })
-  if (!isValidOrderTransition(order.status, ProductionOrderStatus.accepted)) {
-    return reply.status(400).send({ success: false, error: `Transisi status dari ${order.status} ke accepted tidak valid.` })
+  if (!isValidOrderTransition(order.status as ProductionOrderStatus, ProductionOrderStatus.accepted)) {
+    return reply.status(400).send({ success: false, error: `Transisi status dari '${order.status}' ke 'accepted' tidak valid.` })
   }
 
   const updated = await prisma.productionOrder.update({

@@ -107,7 +107,8 @@ export class EcoThreadApiClient {
 
   public async publishDpp(productId: string) {
     return this.request(`/admin/products/${productId}/publish-dpp`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({})
     })
   }
 
@@ -118,7 +119,8 @@ export class EcoThreadApiClient {
 
   public async acceptOrder(id: string) {
     return this.request(`/mitra/production-orders/${id}/accept`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({})
     })
   }
 
