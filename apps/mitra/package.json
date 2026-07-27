@@ -1,17 +1,15 @@
 {
-  "name": "ecothread-mitra-react",
+  "name": "@ecothread/mitra",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
+    "@ecothread/api-client": "workspace:*",
+    "@ecothread/contracts": "workspace:*",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

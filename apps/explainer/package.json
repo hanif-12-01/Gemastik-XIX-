@@ -1,17 +1,15 @@
 {
-  "name": "ecothread-animation-demo",
+  "name": "@ecothread/explainer",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "framer-motion": "^12.38.0",
+    "@ecothread/api-client": "workspace:*",
+    "@ecothread/contracts": "workspace:*",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
