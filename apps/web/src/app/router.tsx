@@ -25,10 +25,22 @@ import { MitraRegistrationPage } from '../pages/auth/MitraRegistrationPage'
 import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage'
 
-// Protected Pages
-import { AdminDashboardPlaceholder } from '../pages/admin/AdminDashboardPlaceholder'
+// Admin Pages (Roadmap 3)
+import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage'
 import { AdminMitraApplicationsPage } from '../pages/admin/AdminMitraApplicationsPage'
-import { MitraDashboardPlaceholder } from '../pages/mitra/MitraDashboardPlaceholder'
+import { AdminMaterialSourcesPage } from '../pages/admin/AdminMaterialSourcesPage'
+import { AdminMaterialBatchesPage } from '../pages/admin/AdminMaterialBatchesPage'
+import { AdminPatternsPage } from '../pages/admin/AdminPatternsPage'
+import { AdminEcoKitsPage } from '../pages/admin/AdminEcoKitsPage'
+import { AdminProductionOrdersPage } from '../pages/admin/AdminProductionOrdersPage'
+import { AdminOrderDetailPage } from '../pages/admin/AdminOrderDetailPage'
+
+// Mitra Pages (Roadmap 4)
+import { MitraDashboardPage } from '../pages/mitra/MitraDashboardPage'
+import { MitraOrdersPage } from '../pages/mitra/MitraOrdersPage'
+import { MitraOrderDetailPage } from '../pages/mitra/MitraOrderDetailPage'
+import { MitraProfilePage } from '../pages/mitra/MitraProfilePage'
+import { MitraPayoutsPage } from '../pages/mitra/MitraPayoutsPage'
 import { MitraVerificationStatusPage } from '../pages/mitra/MitraVerificationStatusPage'
 
 // Error Pages
@@ -66,7 +78,7 @@ export const router = createBrowserRouter([
     ]
   },
 
-  // Protected Admin Routes
+  // Protected Admin Routes (Roadmap 3)
   {
     path: '/admin',
     element: (
@@ -78,12 +90,18 @@ export const router = createBrowserRouter([
     ),
     errorElement: <UnexpectedErrorPage />,
     children: [
-      { index: true, element: <AdminDashboardPlaceholder /> },
-      { path: 'mitra', element: <AdminMitraApplicationsPage /> }
+      { index: true, element: <AdminDashboardPage /> },
+      { path: 'mitra', element: <AdminMitraApplicationsPage /> },
+      { path: 'materials/sources', element: <AdminMaterialSourcesPage /> },
+      { path: 'materials', element: <AdminMaterialBatchesPage /> },
+      { path: 'patterns', element: <AdminPatternsPage /> },
+      { path: 'eco-kits', element: <AdminEcoKitsPage /> },
+      { path: 'orders', element: <AdminProductionOrdersPage /> },
+      { path: 'orders/:id', element: <AdminOrderDetailPage /> }
     ]
   },
 
-  // Protected Mitra Routes
+  // Protected Mitra Routes (Roadmap 4)
   {
     path: '/mitra',
     element: (
@@ -100,7 +118,39 @@ export const router = createBrowserRouter([
         index: true,
         element: (
           <MitraVerificationGuard>
-            <MitraDashboardPlaceholder />
+            <MitraDashboardPage />
+          </MitraVerificationGuard>
+        )
+      },
+      {
+        path: 'orders',
+        element: (
+          <MitraVerificationGuard>
+            <MitraOrdersPage />
+          </MitraVerificationGuard>
+        )
+      },
+      {
+        path: 'orders/:id',
+        element: (
+          <MitraVerificationGuard>
+            <MitraOrderDetailPage />
+          </MitraVerificationGuard>
+        )
+      },
+      {
+        path: 'profile',
+        element: (
+          <MitraVerificationGuard>
+            <MitraProfilePage />
+          </MitraVerificationGuard>
+        )
+      },
+      {
+        path: 'payouts',
+        element: (
+          <MitraVerificationGuard>
+            <MitraPayoutsPage />
           </MitraVerificationGuard>
         )
       }

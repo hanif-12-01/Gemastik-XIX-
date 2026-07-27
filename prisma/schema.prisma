@@ -176,6 +176,11 @@ model MaterialSource {
   category   String
   location   String
   contact    String?
+  sourceType String?    @default("waste_bank")
+  notes      String?
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt @default(now())
   dataOrigin DataOrigin @default(demo)
 
   batches MaterialBatch[]
@@ -189,11 +194,12 @@ model MaterialBatch {
   sourceId         String
   materialType     String
   weightKg         Float
+  usableWeightKg   Float?
   color            String?
   sortingDetails   String?
   imageUrl         String?
   sanitizationDate DateTime?
-  status           String      @default("sorted") // received, sanitized, ready_for_kit
+  status           String      @default("ready_for_kit") // received, sanitized, ready_for_kit, reserved, depleted
   dataOrigin       DataOrigin  @default(demo)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
@@ -222,13 +228,17 @@ model SanitizationRecord {
 }
 
 model Pattern {
-  id          String     @id @default(uuid())
-  patternCode String     @unique // e.g. PAT-2026-0001
-  name        String
-  category    String
-  description String?
-  dataOrigin  DataOrigin @default(demo)
-  createdAt   DateTime   @default(now())
+  id               String     @id @default(uuid())
+  patternCode      String     @unique // e.g. PAT-2026-0001
+  name             String
+  category         String
+  description      String?
+  difficultyLevel  String     @default("Medium")
+  estimatedMinutes Float      @default(300.0)
+  approvalStatus   String     @default("approved") // draft, under_review, approved, archived
+  active           Boolean    @default(true)
+  dataOrigin       DataOrigin @default(demo)
+  createdAt        DateTime   @default(now())
 
   versions PatternVersion[]
   ecoKits  EcoKit[]
@@ -288,9 +298,12 @@ model ProductionOrder {
   ecoKitId          String
   mitraUserId       String?
   status            ProductionOrderStatus @default(draft)
+  priority          String                @default("normal") // low, normal, high, urgent
   targetCompletion  DateTime?
   agreedPayoutRate  Float                 @default(150000.0)
   rejectionReason   String?
+  notes             String?
+  assignedAt        DateTime?
   dataOrigin        DataOrigin            @default(demo)
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
@@ -299,11 +312,29 @@ model ProductionOrder {
   mitraUser          User?                @relation("AssignedMitra", fields: [mitraUserId], references: [id])
   productionProgress ProductionProgress[]
   productionEvidence ProductionEvidence[]
+  productionIssues   ProductionIssue[]
   qcReviews          QcReview[]
   payouts            Payout[]
   products           Product[]
 
   @@map("production_orders")
+}
+
+model ProductionIssue {
+  id              String   @id @default(uuid())
+  orderId         String
+  issueType       String   // material_shortage, material_damage, pattern_unclear, equipment_problem, deadline_risk, quality_risk, other
+  severity        String   @default("medium") // low, medium, high, blocking
+  description     String
+  requestedAction String?
+  evidenceUrl     String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  createdAt       DateTime @default(now())
+
+  order ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("production_issues")
 }
 
 model ProductionProgress {

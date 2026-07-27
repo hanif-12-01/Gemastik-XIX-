@@ -12,8 +12,21 @@ import {
   ForgotPasswordSchema,
   ResetPasswordSchema,
   MitraDecisionSchema,
+  CreateMaterialSourceSchema,
+  UpdateMaterialSourceSchema,
   CreateMaterialBatchSchema,
+  UpdateMaterialBatchSchema,
+  CreatePatternSchema,
+  UpdatePatternSchema,
+  CreateEcoKitSchema,
+  UpdateEcoKitSchema,
   CreateProductionOrderSchema,
+  UpdateProductionOrderSchema,
+  AssignProductionOrderSchema,
+  RejectProductionOrderSchema,
+  UpdateMitraProfileSchema,
+  CreateProductionProgressSchema,
+  CreateProductionIssueSchema,
   SubmitQcEvidenceSchema,
   QcDecisionSchema,
   MarkPaidSchema,
@@ -717,33 +730,366 @@ fastify.post('/api/v1/admin/production-orders', { preHandler: [fastify.authentic
   return reply.status(201).send({ success: true, data: order })
 })
 
-fastify.post('/api/v1/admin/production-orders/:id/assign', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const { id } = request.params as { id: string }
-  const { mitraUserId } = request.body as { mitraUserId: string }
-
-  const order = await prisma.productionOrder.findUnique({ where: { id } })
-  if (!order) {
-    return reply.status(404).send({ success: false, error: 'Production Order tidak ditemukan.' })
-  }
-
-  const updated = await prisma.productionOrder.update({
-    where: { id },
-    data: {
-      mitraUserId,
-      status: ProductionOrderStatus.offered
+// Assignable Mitra List (Admin only)
+fastify.get('/api/v1/admin/assignable-mitra', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async () => {
+  const mitras = await prisma.mitraProfile.findMany({
+    where: {
+      verificationStatus: MitraVerificationStatus.approved,
+      user: { accountStatus: 'active' }
     },
-    include: { ecoKit: true, mitraUser: { include: { mitraProfile: true } } }
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      }
+    }
   })
 
-  await createAuditLog(request.user.id, 'ASSIGN_ORDER_TO_MITRA', 'production_orders', id, `Order ${order.orderCode} ditugaskan ke Mitra ${mitraUserId}`)
-
-  return reply.send({ success: true, data: updated })
+  return {
+    success: true,
+    data: mitras
+  }
 })
 
-// ----------------------------------------------------
-// Mitra Endpoints
-// ----------------------------------------------------
+// Material Sources CRUD
+fastify.get('/api/v1/admin/material-sources', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async () => {
+  const sources = await prisma.materialSource.findMany({
+    include: { batches: true },
+    orderBy: { createdAt: 'desc' }
+  })
+  return { success: true, data: sources }
+})
 
+fastify.get('/api/v1/admin/material-sources/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const source = await prisma.materialSource.findUnique({
+    where: { id },
+    include: { batches: true }
+  })
+  if (!source) return reply.status(404).send({ success: false, error: 'Sumber material tidak ditemukan.' })
+  return { success: true, data: source }
+})
+
+fastify.post('/api/v1/admin/material-sources', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const result = CreateMaterialSourceSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input tidak valid', meta: result.error.format() })
+  }
+
+  const count = await prisma.materialSource.count()
+  const sourceCode = `SRC-2026-${String(count + 1).padStart(4, '0')}`
+
+  const source = await prisma.materialSource.create({
+    data: {
+      sourceCode,
+      name: result.data.name,
+      category: result.data.category || 'Waste Bank',
+      location: result.data.location,
+      contact: result.data.contact || null,
+      sourceType: result.data.sourceType || 'waste_bank',
+      notes: result.data.notes || null,
+      dataOrigin: DataOrigin.actual
+    }
+  })
+
+  await createAuditLog(request.user.id, 'CREATE_MATERIAL_SOURCE', 'material_sources', source.id, `Sumber ${sourceCode} dibuat`)
+  return reply.status(201).send({ success: true, data: source })
+})
+
+fastify.patch('/api/v1/admin/material-sources/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const result = UpdateMaterialSourceSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input perbaikan tidak valid', meta: result.error.format() })
+  }
+
+  const updated = await prisma.materialSource.update({
+    where: { id },
+    data: result.data
+  })
+
+  await createAuditLog(request.user.id, 'UPDATE_MATERIAL_SOURCE', 'material_sources', id, `Sumber material ${id} diperbarui`)
+  return { success: true, data: updated }
+})
+
+// Material Batches CRUD (Detail & Patch)
+fastify.get('/api/v1/admin/material-batches/:id', { preHandler: [fastify.authenticate] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const batch = await prisma.materialBatch.findUnique({
+    where: { id },
+    include: { source: true, sanitizationRecords: true }
+  })
+  if (!batch) return reply.status(404).send({ success: false, error: 'Batch material tidak ditemukan.' })
+  return { success: true, data: batch }
+})
+
+fastify.patch('/api/v1/admin/material-batches/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const result = UpdateMaterialBatchSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input tidak valid', meta: result.error.format() })
+  }
+
+  const updated = await prisma.materialBatch.update({
+    where: { id },
+    data: result.data
+  })
+
+  await createAuditLog(request.user.id, 'UPDATE_MATERIAL_BATCH', 'material_batches', id, `Batch material ${id} diperbarui`)
+  return { success: true, data: updated }
+})
+
+// Pattern Management CRUD
+fastify.get('/api/v1/admin/patterns', { preHandler: [fastify.authenticate] }, async () => {
+  const patterns = await prisma.pattern.findMany({
+    include: { versions: true },
+    orderBy: { createdAt: 'desc' }
+  })
+  return { success: true, data: patterns }
+})
+
+fastify.get('/api/v1/admin/patterns/:id', { preHandler: [fastify.authenticate] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const pattern = await prisma.pattern.findUnique({
+    where: { id },
+    include: { versions: true }
+  })
+  if (!pattern) return reply.status(404).send({ success: false, error: 'Pola tidak ditemukan.' })
+  return { success: true, data: pattern }
+})
+
+fastify.post('/api/v1/admin/patterns', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const result = CreatePatternSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input pola tidak valid', meta: result.error.format() })
+  }
+
+  const count = await prisma.pattern.count()
+  const patternCode = `PAT-2026-${String(count + 1).padStart(4, '0')}`
+
+  const pattern = await prisma.pattern.create({
+    data: {
+      patternCode,
+      name: result.data.name,
+      category: result.data.category,
+      description: result.data.description || null,
+      difficultyLevel: result.data.difficultyLevel || 'Medium',
+      estimatedMinutes: result.data.estimatedMinutes || 300,
+      approvalStatus: result.data.approvalStatus || 'approved',
+      dataOrigin: DataOrigin.actual,
+      versions: {
+        create: {
+          versionCode: 'v1.0',
+          instructions: result.data.description || 'Petunjuk standar pemotongan dan penjahitan upcycling EcoThread.',
+          isApproved: true
+        }
+      }
+    },
+    include: { versions: true }
+  })
+
+  await createAuditLog(request.user.id, 'CREATE_PATTERN', 'patterns', pattern.id, `Pola ${patternCode} dibuat`)
+  return reply.status(201).send({ success: true, data: pattern })
+})
+
+fastify.patch('/api/v1/admin/patterns/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const result = UpdatePatternSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input tidak valid', meta: result.error.format() })
+  }
+
+  const updated = await prisma.pattern.update({
+    where: { id },
+    data: result.data
+  })
+
+  await createAuditLog(request.user.id, 'UPDATE_PATTERN', 'patterns', id, `Pola ${id} diperbarui`)
+  return { success: true, data: updated }
+})
+
+// Eco-Kit Management CRUD
+fastify.get('/api/v1/admin/eco-kits', { preHandler: [fastify.authenticate] }, async () => {
+  const kits = await prisma.ecoKit.findMany({
+    include: { pattern: true, ecoKitItems: { include: { batch: true } } },
+    orderBy: { createdAt: 'desc' }
+  })
+  return { success: true, data: kits }
+})
+
+fastify.get('/api/v1/admin/eco-kits/:id', { preHandler: [fastify.authenticate] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const kit = await prisma.ecoKit.findUnique({
+    where: { id },
+    include: { pattern: true, ecoKitItems: { include: { batch: true } } }
+  })
+  if (!kit) return reply.status(404).send({ success: false, error: 'Eco-Kit tidak ditemukan.' })
+  return { success: true, data: kit }
+})
+
+fastify.post('/api/v1/admin/eco-kits', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const result = CreateEcoKitSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input Eco-Kit tidak valid', meta: result.error.format() })
+  }
+
+  const { name, patternId, difficulty, targetHours, items } = result.data
+
+  const pattern = await prisma.pattern.findUnique({ where: { id: patternId } })
+  if (!pattern || pattern.approvalStatus !== 'approved') {
+    return reply.status(400).send({ success: false, error: 'Pola yang dipilih harus berstatus approved.' })
+  }
+
+  // Validate material batch availability
+  for (const item of items) {
+    const batch = await prisma.materialBatch.findUnique({ where: { id: item.batchId } })
+    if (!batch) {
+      return reply.status(400).send({ success: false, error: `Batch material ${item.batchId} tidak ditemukan.` })
+    }
+    if (batch.status === 'depleted') {
+      return reply.status(400).send({ success: false, error: `Batch material ${batch.batchCode} sudah habis (depleted).` })
+    }
+    if (item.quantity > batch.weightKg) {
+      return reply.status(400).send({ success: false, error: `Alokasi material ${item.quantity}kg melebihi stok yang ada (${batch.weightKg}kg).` })
+    }
+  }
+
+  const count = await prisma.ecoKit.count()
+  const kitCode = `KIT-2026-${String(count + 1).padStart(4, '0')}`
+
+  const kit = await prisma.ecoKit.create({
+    data: {
+      kitCode,
+      name,
+      patternId,
+      difficulty,
+      targetHours,
+      status: 'ready',
+      dataOrigin: DataOrigin.actual,
+      ecoKitItems: {
+        create: items.map((i) => ({
+          batchId: i.batchId,
+          quantity: i.quantity,
+          unit: i.unit || 'kg',
+          itemNotes: i.itemNotes || null
+        }))
+      }
+    },
+    include: { pattern: true, ecoKitItems: { include: { batch: true } } }
+  })
+
+  await createAuditLog(request.user.id, 'CREATE_ECO_KIT', 'eco_kits', kit.id, `Eco-Kit ${kitCode} dibuat`)
+  return reply.status(201).send({ success: true, data: kit })
+})
+
+fastify.patch('/api/v1/admin/eco-kits/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const result = UpdateEcoKitSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input tidak valid', meta: result.error.format() })
+  }
+
+  const updated = await prisma.ecoKit.update({
+    where: { id },
+    data: {
+      name: result.data.name,
+      difficulty: result.data.difficulty,
+      targetHours: result.data.targetHours
+    }
+  })
+
+  await createAuditLog(request.user.id, 'UPDATE_ECO_KIT', 'eco_kits', id, `Eco-Kit ${id} diperbarui`)
+  return { success: true, data: updated }
+})
+
+// Production Order List & Detail for Admin
+fastify.get('/api/v1/admin/production-orders', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async () => {
+  const orders = await prisma.productionOrder.findMany({
+    include: {
+      ecoKit: { include: { pattern: true, ecoKitItems: { include: { batch: true } } } },
+      mitraUser: { include: { mitraProfile: true } },
+      productionProgress: true,
+      productionEvidence: true,
+      productionIssues: true
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  return { success: true, data: orders }
+})
+
+fastify.get('/api/v1/admin/production-orders/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params
+  const order = await prisma.productionOrder.findUnique({
+    where: { id },
+    include: {
+      ecoKit: { include: { pattern: true, ecoKitItems: { include: { batch: true } } } },
+      mitraUser: { include: { mitraProfile: true } },
+      productionProgress: true,
+      productionEvidence: true,
+      productionIssues: true,
+      qcReviews: true,
+      payouts: true
+    }
+  })
+  if (!order) return reply.status(404).send({ success: false, error: 'Production order tidak ditemukan.' })
+  return { success: true, data: order }
+})
+
+// Mitra Profile GET & PATCH
+fastify.get('/api/v1/mitra/profile', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
+  const profile = await prisma.mitraProfile.findUnique({
+    where: { userId: request.user.id },
+    include: { user: true }
+  })
+  if (!profile) return reply.status(404).send({ success: false, error: 'Profil Mitra tidak ditemukan.' })
+  return { success: true, data: profile }
+})
+
+fastify.patch('/api/v1/mitra/profile', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
+  const result = UpdateMitraProfileSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input profil tidak valid', meta: result.error.format() })
+  }
+
+  const { name, workshopName, phone, location, address, specialization, capacityPerWeek } = result.data
+
+  const profile = await prisma.mitraProfile.findUnique({ where: { userId: request.user.id } })
+  if (!profile) return reply.status(404).send({ success: false, error: 'Profil Mitra tidak ditemukan.' })
+
+  if (name || phone || address) {
+    await prisma.user.update({
+      where: { id: request.user.id },
+      data: {
+        ...(name ? { name } : {}),
+        userProfile: {
+          upsert: {
+            create: { phone, address },
+            update: { phone, address }
+          }
+        }
+      }
+    })
+  }
+
+  const updatedProfile = await prisma.mitraProfile.update({
+    where: { userId: request.user.id },
+    data: {
+      ...(workshopName ? { workshopName } : {}),
+      ...(location ? { location } : {}),
+      ...(specialization ? { specialization } : {}),
+      ...(capacityPerWeek ? { capacityPerWeek } : {})
+    },
+    include: { user: true }
+  })
+
+  await createAuditLog(request.user.id, 'UPDATE_MITRA_PROFILE', 'mitra_profiles', profile.id, `Mitra ${request.user.id} memperbarui profil`)
+  return { success: true, data: updatedProfile }
+})
+
+// Mitra Orders
 fastify.get('/api/v1/mitra/production-orders', { preHandler: [fastify.authenticate, checkRole([Role.mitra, Role.admin])] }, async (request: any, reply: any) => {
   const mitraUserId = request.user.role === Role.mitra ? request.user.id : undefined
 
@@ -946,6 +1292,57 @@ fastify.post('/api/v1/mitra/production-orders/:id/submit-qc', { preHandler: [fas
   await createAuditLog(request.user.id, 'SUBMIT_QC_EVIDENCE', 'production_orders', id, `Mitra submit bukti QC untuk ${updatedOrder.orderCode}`)
 
   return reply.send({ success: true, data: { evidence, order: updatedOrder } })
+})
+
+// Mitra Production Issue Reporting
+fastify.post('/api/v1/mitra/production-orders/:id/issues', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const result = CreateProductionIssueSchema.safeParse(request.body)
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input kendala tidak valid', meta: result.error.format() })
+  }
+
+  const order = await prisma.productionOrder.findUnique({ where: { id } })
+  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  if (order.mitraUserId !== request.user.id) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+
+  const issue = await prisma.productionIssue.create({
+    data: {
+      orderId: id,
+      issueType: result.data.issueType,
+      severity: result.data.severity,
+      description: result.data.description,
+      requestedAction: result.data.requestedAction || null
+    }
+  })
+
+  await createAuditLog(request.user.id, 'REPORT_PRODUCTION_ISSUE', 'production_issues', issue.id, `Kendala ${result.data.issueType} dilaporkan untuk order ${order.orderCode}`)
+
+  return reply.status(201).send({ success: true, data: issue })
+})
+
+// Mitra Payout History (Read-Only for own orders)
+fastify.get('/api/v1/mitra/payouts', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
+  const payouts = await prisma.payout.findMany({
+    where: {
+      order: {
+        mitraUserId: request.user.id
+      }
+    },
+    include: {
+      order: {
+        select: {
+          id: true,
+          orderCode: true,
+          status: true,
+          ecoKit: { select: { name: true } }
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return { success: true, data: payouts }
 })
 
 // ----------------------------------------------------
@@ -1356,116 +1753,8 @@ fastify.get('/api/v1/me/customer-orders', { preHandler: [fastify.authenticate] }
   return reply.send({ success: true, data: orders })
 })
 
-// ----------------------------------------------------
-// Admin: List Endpoints for Frontend
-// ----------------------------------------------------
 
-fastify.get('/api/v1/admin/mitra', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const mitraUsers = await prisma.user.findMany({
-    where: { role: Role.mitra },
-    include: { mitraProfile: true, userProfile: true },
-    orderBy: { createdAt: 'desc' }
-  })
-  return reply.send({ success: true, data: mitraUsers })
-})
 
-fastify.get('/api/v1/admin/production-orders', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const orders = await prisma.productionOrder.findMany({
-    include: {
-      ecoKit: { include: { pattern: true } },
-      mitraUser: { include: { mitraProfile: true } },
-      productionProgress: true,
-      productionEvidence: true,
-      qcReviews: true,
-      payouts: true
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-  return reply.send({ success: true, data: orders })
-})
-
-fastify.get('/api/v1/admin/products', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const products = await prisma.product.findMany({
-    include: {
-      productionOrder: { include: { mitraUser: true } },
-      dppRecord: true,
-      impactRecords: true
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-  return reply.send({ success: true, data: products })
-})
-
-fastify.get('/api/v1/admin/customer-orders', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const orders = await prisma.customerOrder.findMany({
-    include: {
-      user: true,
-      customerOrderItems: { include: { catalogItem: true } },
-      payments: true
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-  return reply.send({ success: true, data: orders })
-})
-
-fastify.get('/api/v1/admin/payments', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const payments = await prisma.payment.findMany({
-    include: { customerOrder: { include: { user: true } } },
-    orderBy: { createdAt: 'desc' }
-  })
-  return reply.send({ success: true, data: payments })
-})
-
-// Mitra: Profile endpoint
-fastify.get('/api/v1/mitra/profile', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
-  const user = await prisma.user.findUnique({
-    where: { id: request.user.id },
-    include: {
-      mitraProfile: true,
-      userProfile: true
-    }
-  })
-  if (!user) {
-    return reply.status(404).send({ success: false, error: 'Profil tidak ditemukan.' })
-  }
-
-  // Compute mitra stats
-  const totalOrders = await prisma.productionOrder.count({ where: { mitraUserId: request.user.id } })
-  const completedOrders = await prisma.productionOrder.count({
-    where: { mitraUserId: request.user.id, status: 'completed' }
-  })
-  const totalPayout = await prisma.payout.aggregate({
-    where: { order: { mitraUserId: request.user.id }, status: 'paid' },
-    _sum: { amount: true }
-  })
-
-  return reply.send({
-    success: true,
-    data: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      mitraProfile: user.mitraProfile,
-      userProfile: user.userProfile,
-      stats: {
-        totalOrders,
-        completedOrders,
-        totalPayout: totalPayout._sum.amount || 0
-      }
-    }
-  })
-})
-
-// Mitra: Payout history
-fastify.get('/api/v1/mitra/payouts', { preHandler: [fastify.authenticate, checkRole([Role.mitra])] }, async (request: any, reply: any) => {
-  const payouts = await prisma.payout.findMany({
-    where: { order: { mitraUserId: request.user.id } },
-    include: { order: true },
-    orderBy: { createdAt: 'desc' }
-  })
-  return reply.send({ success: true, data: payouts })
-})
 
 // Start Fastify Server
 const start = async () => {

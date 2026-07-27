@@ -142,8 +142,36 @@ export class EcoThreadApiClient {
     return this.request('/admin/dashboard-stats')
   }
 
+  // Admin Material Sources
+  public async listMaterialSources() {
+    return this.request('/admin/material-sources')
+  }
+
+  public async getMaterialSource(id: string) {
+    return this.request(`/admin/material-sources/${id}`)
+  }
+
+  public async createMaterialSource(payload: any) {
+    return this.request('/admin/material-sources', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async updateMaterialSource(id: string, payload: any) {
+    return this.request(`/admin/material-sources/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  // Admin Material Batches
   public async getMaterialBatches() {
     return this.request('/admin/material-batches')
+  }
+
+  public async getMaterialBatch(id: string) {
+    return this.request(`/admin/material-batches/${id}`)
   }
 
   public async createMaterialBatch(payload: any) {
@@ -153,9 +181,78 @@ export class EcoThreadApiClient {
     })
   }
 
+  public async updateMaterialBatch(id: string, payload: any) {
+    return this.request(`/admin/material-batches/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  // Admin Patterns
+  public async listPatterns() {
+    return this.request('/admin/patterns')
+  }
+
+  public async getPattern(id: string) {
+    return this.request(`/admin/patterns/${id}`)
+  }
+
+  public async createPattern(payload: any) {
+    return this.request('/admin/patterns', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async updatePattern(id: string, payload: any) {
+    return this.request(`/admin/patterns/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  // Admin Eco-Kits
+  public async listEcoKits() {
+    return this.request('/admin/eco-kits')
+  }
+
+  public async getEcoKit(id: string) {
+    return this.request(`/admin/eco-kits/${id}`)
+  }
+
+  public async createEcoKit(payload: any) {
+    return this.request('/admin/eco-kits', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async updateEcoKit(id: string, payload: any) {
+    return this.request(`/admin/eco-kits/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  // Admin Production Orders
+  public async listAdminProductionOrders() {
+    return this.request('/admin/production-orders')
+  }
+
+  public async getAdminProductionOrder(id: string) {
+    return this.request(`/admin/production-orders/${id}`)
+  }
+
   public async createProductionOrder(payload: any) {
     return this.request('/admin/production-orders', {
       method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async updateProductionOrder(id: string, payload: any) {
+    return this.request(`/admin/production-orders/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(payload)
     })
   }
@@ -165,6 +262,10 @@ export class EcoThreadApiClient {
       method: 'POST',
       body: JSON.stringify({ mitraUserId })
     })
+  }
+
+  public async getAssignableMitra() {
+    return this.request('/admin/assignable-mitra')
   }
 
   public async getQcReviews() {
@@ -239,6 +340,20 @@ export class EcoThreadApiClient {
   public async submitQcEvidence(id: string, payload: any) {
     return this.request(`/mitra/production-orders/${id}/submit-qc`, {
       method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async createProductionIssue(id: string, payload: any) {
+    return this.request(`/mitra/production-orders/${id}/issues`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  public async updateMitraProfile(payload: any) {
+    return this.request('/mitra/profile', {
+      method: 'PATCH',
       body: JSON.stringify(payload)
     })
   }

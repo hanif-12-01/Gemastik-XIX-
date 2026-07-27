@@ -121,20 +121,106 @@ export const MitraDecisionSchema = z.object({
   notes: z.string().optional()
 })
 
+export const CreateMaterialSourceSchema = z.object({
+  name: z.string().min(2),
+  category: z.string().default('Waste Bank'),
+  location: z.string().min(2),
+  contact: z.string().optional(),
+  sourceType: z.string().default('waste_bank'),
+  notes: z.string().optional()
+})
+
+export const UpdateMaterialSourceSchema = CreateMaterialSourceSchema.partial()
+
 export const CreateMaterialBatchSchema = z.object({
   sourceId: z.string().uuid().optional(),
-  sourceName: z.string().min(2),
+  sourceName: z.string().min(2).optional(),
   materialType: z.string().min(2),
   weightKg: z.number().positive(),
+  usableWeightKg: z.number().positive().optional(),
   color: z.string().optional(),
   sortingDetails: z.string().optional(),
   imageUrl: z.string().optional()
 })
 
+export const UpdateMaterialBatchSchema = CreateMaterialBatchSchema.partial()
+
+export const CreatePatternSchema = z.object({
+  name: z.string().min(2),
+  category: z.string().default('Outerwear'),
+  description: z.string().optional(),
+  difficultyLevel: z.string().default('Medium'),
+  estimatedMinutes: z.number().positive().default(300),
+  approvalStatus: z.enum(['draft', 'under_review', 'approved', 'archived']).default('approved')
+})
+
+export const UpdatePatternSchema = CreatePatternSchema.partial()
+
+export const CreateEcoKitSchema = z.object({
+  name: z.string().min(2),
+  patternId: z.string().uuid(),
+  difficulty: z.string().default('Medium'),
+  targetHours: z.number().positive().default(5.0),
+  items: z.array(
+    z.object({
+      batchId: z.string().uuid(),
+      quantity: z.number().positive(),
+      unit: z.string().default('kg'),
+      itemNotes: z.string().optional()
+    })
+  ).min(1)
+})
+
+export const UpdateEcoKitSchema = CreateEcoKitSchema.partial()
+
 export const CreateProductionOrderSchema = z.object({
   ecoKitId: z.string().uuid(),
   mitraUserId: z.string().uuid().optional(),
-  agreedPayoutRate: z.number().positive()
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+  agreedPayoutRate: z.number().positive().default(150000.0),
+  targetCompletionDays: z.number().int().positive().default(5),
+  notes: z.string().optional()
+})
+
+export const UpdateProductionOrderSchema = CreateProductionOrderSchema.partial()
+
+export const AssignProductionOrderSchema = z.object({
+  mitraUserId: z.string().uuid()
+})
+
+export const RejectProductionOrderSchema = z.object({
+  rejectionReason: z.string().min(3)
+})
+
+export const UpdateMitraProfileSchema = z.object({
+  name: z.string().min(2).optional(),
+  workshopName: z.string().min(2).optional(),
+  phone: z.string().min(8).optional(),
+  location: z.string().min(2).optional(),
+  address: z.string().min(5).optional(),
+  specialization: z.string().optional(),
+  capacityPerWeek: z.number().int().positive().optional()
+})
+
+export const CreateProductionProgressSchema = z.object({
+  stepName: z.string().min(2),
+  percentage: z.number().min(0).max(100),
+  notes: z.string().optional()
+})
+
+export const CreateProductionIssueSchema = z.object({
+  issueType: z.enum([
+    'material_shortage',
+    'material_damage',
+    'pattern_unclear',
+    'equipment_problem',
+    'deadline_risk',
+    'quality_risk',
+    'other'
+  ]),
+  severity: z.enum(['low', 'medium', 'high', 'blocking']).default('medium'),
+  description: z.string().min(5),
+  requestedAction: z.string().optional()
 })
 
 // Accepts either a full URL or an uploaded local storage path (e.g. /uploads/xxx.jpg)
