@@ -155,15 +155,13 @@ Contoh:
 | Area | Teknologi | Keputusan |
 |---|---|---|
 | Monorepo | pnpm workspaces | Ringan dan cocok untuk beberapa aplikasi |
-| Admin Frontend | React + Vite + TypeScript | Memigrasikan prototype yang sudah ada |
-| Mitra Frontend | React + Vite + TypeScript, PWA | Mobile-first dan dapat diinstal |
-| User Frontend | React + Vite + TypeScript, PWA | Katalog, order, DPP publik |
+| Frontend Web App | React + Vite + TypeScript (ADR-001) | Single Role-Based Web App (`apps/web`) |
 | Explainer | React + Vite | Dipertahankan sebagai aplikasi demo terpisah |
 | Backend API | Node.js + Fastify + TypeScript | Cepat, ringan, schema-friendly |
 | Validation | Zod | Kontrak request/response bersama |
 | ORM | Prisma | Migration, relation, type safety |
 | Database | PostgreSQL melalui Supabase | Relasional dan managed |
-| Authentication | Supabase Auth | Email/password dan token JWT |
+| Authentication | Supabase Auth / JWT | Email/password dan token JWT |
 | File Storage | Supabase Storage | Material, pola, QC, produk |
 | Realtime | Supabase Realtime atau polling | Hanya untuk event yang dibutuhkan |
 | AI Worker | Python + FastAPI | Isolasi dependency ML |
@@ -175,7 +173,7 @@ Contoh:
 | Testing Frontend | Vitest + React Testing Library | Unit/component test |
 | Testing Backend | Vitest | Service dan integration test |
 | E2E | Playwright | Skenario Admin–Mitra–User |
-| Deployment Frontend | Vercel | Admin, Mitra, User, Explainer |
+| Deployment Frontend | Vercel | Single Web App (`apps/web`), Explainer |
 | Deployment API | Railway atau Render | Long-running Node service |
 | Deployment AI | RunPod Serverless atau service Python terpisah | GPU hanya saat dibutuhkan |
 | Monitoring | Sentry + structured logs | Error dan trace dasar |
@@ -191,6 +189,7 @@ flowchart LR
     MITRA[Mitra Penjahit]
     USER[User / Konsumen]
     CORP[Supplier / Korporasi]
+    WEB[EcoThread Web App (apps/web)]
     API[EcoThread Backend API]
     DB[(PostgreSQL)]
     STORAGE[(Object Storage)]
@@ -199,9 +198,10 @@ flowchart LR
     PAY[Payment Provider / Manual Transfer]
     LOGISTIC[Logistics Provider]
 
-    ADMIN -->|Web App| API
-    MITRA -->|PWA| API
-    USER -->|Web / PWA / DPP Scan| API
+    ADMIN -->|Admin Dashboard| WEB
+    MITRA -->|Mitra Portal| WEB
+    USER -->|Public Catalog & DPP| WEB
+    WEB --> API
     CORP -.->|Data sumber material / pilot| API
 
     API --> DB
@@ -221,9 +221,7 @@ Garis putus-putus menunjukkan integrasi yang dapat dimulai secara manual pada MV
 ```mermaid
 flowchart TB
     subgraph Clients
-        ADMIN_APP[Admin Web App]
-        MITRA_APP[Mitra PWA]
-        USER_APP[User Web/PWA]
+        WEB_APP[Single Role-Based Web App (apps/web)]
         EXPLAINER[Explainer App]
     end
 
@@ -260,9 +258,7 @@ flowchart TB
         NOTIFICATION_WORKER[Notification Worker]
     end
 
-    ADMIN_APP --> API
-    MITRA_APP --> API
-    USER_APP --> API
+    WEB_APP --> API
 
     API --> AUTH
     AUTH --> SUPA_AUTH
@@ -303,41 +299,33 @@ flowchart TB
 
 ## 7. Struktur Repository
 
+> **Perubahan Arsitektur (ADR-001):** Tiga aplikasi frontend terpisah (`apps/admin`, `apps/mitra`, `apps/user`) dikonsolidasikan ke dalam satu role-based Web Application di `apps/web`. Folder legacy tetap disimpan sementara sebagai referensi migrasi.
+
 ```text
 Gemastik-XIX/
 ├── apps/
-│   ├── admin/
+│   ├── web/                           # Single Role-Based Web App (React + Vite + TS)
 │   │   ├── src/
-│   │   │   ├── app/
-│   │   │   ├── features/
-│   │   │   ├── pages/
-│   │   │   ├── components/
-│   │   │   └── main.tsx
-│   │   └── package.json
+│   │   │   ├── app/                   # App Router, Layouts, Providers, Route Guards
+│   │   │   ├── pages/                 # Public, Auth, Admin, Mitra, Error Pages
+│   │   │   ├── features/              # Domain-specific feature modules
+│   │   │   ├── components/            # Navigation, Feedback, UI Design System
+│   │   │   ├── lib/                   # API SDK Client, Env Validation, Route helpers
+│   │   │   └── styles/                # CSS Design Tokens & Globals
+│   │   ├── public/
+│   │   ├── index.html
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── vite.config.ts
+│   │   └── vercel.json
 │   │
-│   ├── mitra/
-│   │   ├── src/
-│   │   │   ├── app/
-│   │   │   ├── features/
-│   │   │   ├── pages/
-│   │   │   └── main.tsx
-│   │   └── package.json
-│   │
-│   ├── user/
-│   │   ├── src/
-│   │   │   ├── app/
-│   │   │   ├── features/
-│   │   │   ├── pages/
-│   │   │   └── main.tsx
-│   │   └── package.json
-│   │
-│   ├── explainer/
-│   ├── api/
-│   │   ├── src/
-│   │   │   ├── modules/
-│   │   │   ├── plugins/
-│   │   │   ├── jobs/
-│   │   │   ├── lib/
+│   ├── admin/                         # Temporary legacy reference (ADR-001)
+│   ├── mitra/                         # Temporary legacy reference (ADR-001)
+│   ├── user/                          # Temporary legacy reference (ADR-001)
+│   ├── explainer/                     # Interactive Demo App
+│   ├── api/                           # Core Fastify + TypeScript API Server
+│   └── ai-worker/                     # Python FastAPI AI Worker
+
 │   │   │   ├── app.ts
 │   │   │   └── server.ts
 │   │   └── package.json
