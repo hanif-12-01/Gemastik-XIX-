@@ -13,7 +13,14 @@
     "web:lint": "pnpm --filter @ecothread/web lint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test:db:reset": "tsx scripts/test-db-reset.ts",
+    "test:db:seed": "tsx scripts/test-db-seed.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "verify": "tsx scripts/release-check.ts",
+    "release:check": "tsx scripts/release-check.ts && pnpm test:db:reset && pnpm test:db:seed && pnpm test:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",

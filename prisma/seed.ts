@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-async function main() {
+export async function main() {
   console.log('🌱 Starting EcoThread Database Seed...')
 
   // 1. Hash demo password asynchronously once with cost factor 10
