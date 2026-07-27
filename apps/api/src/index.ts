@@ -30,7 +30,9 @@ import {
   SubmitQcEvidenceSchema,
   QcDecisionSchema,
   MarkPaidSchema,
+  MarkPayoutPaidSchema,
   CreateProductSchema,
+  PublishDppSchema,
   CreateCustomerOrderSchema,
   SubmitPaymentProofSchema,
   VerifyPaymentSchema,
@@ -1346,74 +1348,248 @@ fastify.get('/api/v1/mitra/payouts', { preHandler: [fastify.authenticate, checkR
 })
 
 // ----------------------------------------------------
-// QC, Payouts, Product, & DPP (Admin & Public)
+// Roadmap 5: QC Queue & Detail (Admin)
 // ----------------------------------------------------
 
-fastify.get('/api/v1/admin/qc-reviews', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const pendingOrders = await prisma.productionOrder.findMany({
+// Helper: generate metadata hash (SHA-256 of canonical JSON)
+function generateMetadataHash(payload: object): string {
+  const canonical = JSON.stringify(payload, Object.keys(payload).sort())
+  return crypto.createHash('sha256').update(canonical).digest('hex')
+}
+
+// Helper: generate payout code
+async function generatePayoutCode(): Promise<string> {
+  const count = await prisma.payout.count()
+  return `PAY-2026-${String(count + 1).padStart(4, '0')}`
+}
+
+// Helper: generate product code and slug
+async function generateProductCode(): Promise<{ code: string; slug: string }> {
+  const count = await prisma.product.count()
+  const code = `PRD-2026-${String(count + 1).padStart(4, '0')}`
+  const slug = code.toLowerCase()
+  return { code, slug }
+}
+
+// GET /api/v1/admin/qc — QC Queue
+fastify.get('/api/v1/admin/qc', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const orders = await prisma.productionOrder.findMany({
     where: { status: { in: [ProductionOrderStatus.submitted_to_qc, ProductionOrderStatus.qc_revision, ProductionOrderStatus.qc_approved] } },
     include: {
-      productionEvidence: true,
+      productionEvidence: { orderBy: { submittedAt: 'desc' } },
       ecoKit: { include: { pattern: true } },
       mitraUser: { include: { mitraProfile: true } },
-      qcReviews: true
+      qcReviews: { orderBy: { reviewedAt: 'desc' } }
     },
     orderBy: { updatedAt: 'desc' }
   })
-
-  return reply.send({ success: true, data: pendingOrders })
+  return reply.send({ success: true, data: orders })
 })
 
-fastify.post('/api/v1/admin/qc-reviews/:id/decision', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
-  const { id } = request.params as { id: string } // orderId
+// Keep backward-compat alias
+fastify.get('/api/v1/admin/qc-reviews', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const orders = await prisma.productionOrder.findMany({
+    where: { status: { in: [ProductionOrderStatus.submitted_to_qc, ProductionOrderStatus.qc_revision, ProductionOrderStatus.qc_approved] } },
+    include: {
+      productionEvidence: { orderBy: { submittedAt: 'desc' } },
+      ecoKit: { include: { pattern: true } },
+      mitraUser: { include: { mitraProfile: true } },
+      qcReviews: { orderBy: { reviewedAt: 'desc' } }
+    },
+    orderBy: { updatedAt: 'desc' }
+  })
+  return reply.send({ success: true, data: orders })
+})
+
+// GET /api/v1/admin/qc/:id — QC Detail
+fastify.get('/api/v1/admin/qc/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const order = await prisma.productionOrder.findUnique({
+    where: { id },
+    include: {
+      ecoKit: { include: { pattern: true, ecoKitItems: { include: { batch: { include: { source: true } } } } } },
+      mitraUser: { include: { mitraProfile: true } },
+      productionProgress: { orderBy: { updatedAt: 'desc' } },
+      productionEvidence: { orderBy: { submittedAt: 'desc' } },
+      productionIssues: { orderBy: { createdAt: 'desc' } },
+      qcReviews: { include: { adminUser: { select: { name: true, email: true } }, qcFindings: true }, orderBy: { reviewedAt: 'desc' } },
+      payouts: true,
+      products: { include: { dppRecord: true } }
+    }
+  })
+  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  return reply.send({ success: true, data: order })
+})
+
+// POST /api/v1/admin/qc/:id/decision — Full QC Decision
+fastify.post('/api/v1/admin/qc/:id/decision', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
   const result = QcDecisionSchema.safeParse(request.body)
 
   if (!result.success) {
     return reply.status(400).send({ success: false, error: 'Input tidak valid', meta: result.error.format() })
   }
 
-  const { isApproved, decisionNotes, checkFront, checkBack, checkStitching, checkMeasures } = result.data
+  const data = result.data
+  const isApproved = data.decision === 'approved'
+  const isRejected = data.decision === 'rejected'
 
-  const qcReview = await prisma.qcReview.create({
-    data: {
-      orderId: id,
-      adminUserId: request.user.id,
-      isApproved,
-      decisionNotes,
-      checkFront,
-      checkBack,
-      checkStitching,
-      checkMeasures
-    }
-  })
+  // Validate order exists and is in correct state
+  const order = await prisma.productionOrder.findUnique({ where: { id }, include: { mitraUser: true } })
+  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+  if (!['submitted_to_qc', 'qc_revision'].includes(order.status)) {
+    return reply.status(409).send({ success: false, error: `Order status ${order.status} tidak dapat diputuskan QC.` })
+  }
 
-  const newStatus = isApproved ? ProductionOrderStatus.qc_approved : ProductionOrderStatus.qc_revision
-
-  const updatedOrder = await prisma.productionOrder.update({
-    where: { id },
-    data: { status: newStatus }
-  })
-
-  // Idempotent Payout creation upon QC approval
+  // Prevent duplicate approval if already QC approved
   if (isApproved) {
-    const existingPayout = await prisma.payout.findFirst({ where: { orderId: id } })
-    if (!existingPayout) {
-      await prisma.payout.create({
-        data: {
-          orderId: id,
-          amount: updatedOrder.agreedPayoutRate,
-          status: PayoutStatus.pending,
-          dataOrigin: DataOrigin.demo
-        }
-      })
+    const existingApproval = await prisma.qcReview.findFirst({ where: { orderId: id, decision: 'approved' } })
+    if (existingApproval) {
+      return reply.status(409).send({ success: false, error: 'Order ini sudah disetujui QC sebelumnya. Duplikat keputusan ditolak.' })
     }
   }
 
-  await createAuditLog(request.user.id, 'QC_DECISION', 'qc_reviews', qcReview.id, `QC ${isApproved ? 'Approved' : 'Revision Required'} untuk Order ${updatedOrder.orderCode}`)
+  // Determine new order status
+  const newStatus = isApproved
+    ? ProductionOrderStatus.qc_approved
+    : isRejected
+    ? ProductionOrderStatus.cancelled
+    : ProductionOrderStatus.qc_revision
+
+  // Atomic: create QC review + update order status + create payout if approved
+  const [qcReview, updatedOrder] = await prisma.$transaction(async (tx) => {
+    const review = await tx.qcReview.create({
+      data: {
+        orderId: id,
+        adminUserId: request.user.id,
+        decision: data.decision,
+        isApproved,
+        decisionNotes: data.decisionNotes,
+        revisionInstructions: data.revisionInstructions,
+        rejectionReason: data.rejectionReason,
+        checkFront: data.checkFront,
+        checkBack: data.checkBack,
+        checkStitching: data.checkStitching,
+        checkMeasures: data.checkMeasures,
+        checkQuantity: data.checkQuantity,
+        checkMaterial: data.checkMaterial,
+        checkDimensions: data.checkDimensions,
+        checkCleanliness: data.checkCleanliness
+      }
+    })
+
+    const updated = await tx.productionOrder.update({
+      where: { id },
+      data: { status: newStatus }
+    })
+
+    // Create payout eligibility atomically on approval
+    if (isApproved) {
+      const existingPayout = await tx.payout.findFirst({ where: { orderId: id } })
+      if (!existingPayout) {
+        const payoutCode = await generatePayoutCode()
+        await tx.payout.create({
+          data: {
+            payoutCode,
+            orderId: id,
+            mitraUserId: order.mitraUserId,
+            amount: order.agreedPayoutRate,
+            status: PayoutStatus.pending,
+            eligibleAt: new Date(),
+            dataOrigin: order.dataOrigin
+          }
+        })
+      }
+    }
+
+    return [review, updated]
+  })
+
+  await createAuditLog(request.user.id, `QC_${data.decision.toUpperCase()}`, 'qc_reviews', qcReview.id,
+    `QC ${data.decision} untuk Order ${updatedOrder.orderCode}`)
 
   return reply.send({ success: true, data: { qcReview, order: updatedOrder } })
 })
 
+// POST /api/v1/admin/qc-reviews/:id/decision — backward-compat alias (enhanced)
+fastify.post('/api/v1/admin/qc-reviews/:id/decision', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const result = QcDecisionSchema.safeParse(request.body)
+
+  if (!result.success) {
+    return reply.status(400).send({ success: false, error: 'Input tidak valid', meta: result.error.format() })
+  }
+
+  const data = result.data
+  const isApproved = data.decision === 'approved'
+  const order = await prisma.productionOrder.findUnique({ where: { id } })
+  if (!order) return reply.status(404).send({ success: false, error: 'Order tidak ditemukan.' })
+
+  const newStatus = isApproved ? ProductionOrderStatus.qc_approved
+    : data.decision === 'rejected' ? ProductionOrderStatus.cancelled
+    : ProductionOrderStatus.qc_revision
+
+  const [qcReview, updatedOrder] = await prisma.$transaction(async (tx) => {
+    const review = await tx.qcReview.create({
+      data: {
+        orderId: id, adminUserId: request.user.id, decision: data.decision, isApproved,
+        decisionNotes: data.decisionNotes, revisionInstructions: data.revisionInstructions,
+        rejectionReason: data.rejectionReason, checkFront: data.checkFront, checkBack: data.checkBack,
+        checkStitching: data.checkStitching, checkMeasures: data.checkMeasures,
+        checkQuantity: data.checkQuantity, checkMaterial: data.checkMaterial,
+        checkDimensions: data.checkDimensions, checkCleanliness: data.checkCleanliness
+      }
+    })
+    const updated = await tx.productionOrder.update({ where: { id }, data: { status: newStatus } })
+    if (isApproved) {
+      const exists = await tx.payout.findFirst({ where: { orderId: id } })
+      if (!exists) {
+        const payoutCode = await generatePayoutCode()
+        await tx.payout.create({
+          data: { payoutCode, orderId: id, mitraUserId: order.mitraUserId, amount: order.agreedPayoutRate,
+            status: PayoutStatus.pending, eligibleAt: new Date(), dataOrigin: order.dataOrigin }
+        })
+      }
+    }
+    return [review, updated]
+  })
+
+  await createAuditLog(request.user.id, `QC_${data.decision.toUpperCase()}`, 'qc_reviews', qcReview.id,
+    `QC ${data.decision} untuk Order ${updatedOrder.orderCode}`)
+  return reply.send({ success: true, data: { qcReview, order: updatedOrder } })
+})
+
+// ----------------------------------------------------
+// Roadmap 5: Payout Management (Admin)
+// ----------------------------------------------------
+
+// GET /api/v1/admin/payouts
+fastify.get('/api/v1/admin/payouts', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const payouts = await prisma.payout.findMany({
+    include: {
+      order: { include: { ecoKit: true, mitraUser: { include: { mitraProfile: true } } } },
+      mitraUser: { include: { mitraProfile: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: payouts })
+})
+
+// GET /api/v1/admin/payouts/:id
+fastify.get('/api/v1/admin/payouts/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const payout = await prisma.payout.findUnique({
+    where: { id },
+    include: {
+      order: { include: { ecoKit: { include: { pattern: true } }, mitraUser: { include: { mitraProfile: true } }, qcReviews: { orderBy: { reviewedAt: 'desc' }, take: 1 } } },
+      mitraUser: { include: { mitraProfile: true } }
+    }
+  })
+  if (!payout) return reply.status(404).send({ success: false, error: 'Payout tidak ditemukan.' })
+  return reply.send({ success: true, data: payout })
+})
+
+// POST /api/v1/admin/payouts/:id/mark-paid
 fastify.post('/api/v1/admin/payouts/:id/mark-paid', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
   const { id } = request.params as { id: string }
   const result = MarkPaidSchema.safeParse(request.body)
@@ -1422,14 +1598,24 @@ fastify.post('/api/v1/admin/payouts/:id/mark-paid', { preHandler: [fastify.authe
     return reply.status(400).send({ success: false, error: 'Payment reference wajib diisi.', meta: result.error.format() })
   }
 
-  const { paymentReference } = result.data
+  const existing = await prisma.payout.findUnique({ where: { id } })
+  if (!existing) return reply.status(404).send({ success: false, error: 'Payout tidak ditemukan.' })
+  if (existing.status === PayoutStatus.paid) {
+    return reply.status(409).send({ success: false, error: 'Payout ini sudah ditandai paid. Duplikat ditolak.' })
+  }
+
+  const { paymentReference, paymentMethod, paidAt, notes } = result.data
 
   const payout = await prisma.payout.update({
     where: { id },
     data: {
       status: PayoutStatus.paid,
       paymentReference,
-      paidAt: new Date()
+      paymentMethod: paymentMethod || 'bank_transfer',
+      paidAt: paidAt ? new Date(paidAt) : new Date(),
+      paidByUserId: request.user.id,
+      notes,
+      approvedAt: new Date()
     },
     include: { order: true }
   })
@@ -1439,12 +1625,52 @@ fastify.post('/api/v1/admin/payouts/:id/mark-paid', { preHandler: [fastify.authe
     data: { status: ProductionOrderStatus.completed }
   })
 
-  await createAuditLog(request.user.id, 'MARK_PAYOUT_PAID', 'payouts', id, `Payout ${id} ditandai Paid (${paymentReference})`)
+  await createAuditLog(request.user.id, 'MARK_PAYOUT_PAID', 'payouts', id,
+    `Payout ${payout.payoutCode || id} ditandai Paid (${paymentReference})`)
 
   return reply.send({ success: true, data: payout })
 })
 
-// Create Product & Publish DPP
+// ----------------------------------------------------
+// Roadmap 5: Product Management (Admin)
+// ----------------------------------------------------
+
+// GET /api/v1/admin/products
+fastify.get('/api/v1/admin/products', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const products = await prisma.product.findMany({
+    include: {
+      productionOrder: { include: { mitraUser: { include: { mitraProfile: true } } } },
+      dppRecord: { include: { dppVersions: { orderBy: { versionNum: 'desc' }, take: 1 } } },
+      impactRecords: true
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  return reply.send({ success: true, data: products })
+})
+
+// GET /api/v1/admin/products/:id
+fastify.get('/api/v1/admin/products/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: {
+      productionOrder: {
+        include: {
+          ecoKit: { include: { pattern: true, ecoKitItems: { include: { batch: { include: { source: true } } } } } },
+          mitraUser: { include: { mitraProfile: true } },
+          qcReviews: { orderBy: { reviewedAt: 'desc' } },
+          payouts: true
+        }
+      },
+      dppRecord: { include: { dppVersions: { orderBy: { versionNum: 'desc' } } } },
+      impactRecords: true
+    }
+  })
+  if (!product) return reply.status(404).send({ success: false, error: 'Produk tidak ditemukan.' })
+  return reply.send({ success: true, data: product })
+})
+
+// POST /api/v1/admin/products — Create Final Product (QC-approved orders only)
 fastify.post('/api/v1/admin/products', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
   const result = CreateProductSchema.safeParse(request.body)
   if (!result.success) {
@@ -1452,95 +1678,249 @@ fastify.post('/api/v1/admin/products', { preHandler: [fastify.authenticate, chec
   }
 
   const data = result.data
-  const productCount = await prisma.product.count()
-  const productCode = data.productCode || `PRD-2026-${String(productCount + 1).padStart(4, '0')}`
+
+  // Guard: order must be QC approved
+  const order = await prisma.productionOrder.findUnique({
+    where: { id: data.productionOrderId },
+    include: { products: true }
+  })
+  if (!order) return reply.status(404).send({ success: false, error: 'Production order tidak ditemukan.' })
+  if (order.status !== ProductionOrderStatus.qc_approved && order.status !== ProductionOrderStatus.payout_pending && order.status !== ProductionOrderStatus.paid && order.status !== ProductionOrderStatus.completed) {
+    return reply.status(409).send({ success: false, error: `Order status ${order.status} belum QC approved. Produk hanya bisa dibuat setelah QC disetujui.` })
+  }
+
+  // Prevent duplicate product for same order
+  if (order.products.length > 0) {
+    return reply.status(409).send({ success: false, error: 'Produk sudah dibuat untuk order ini. Duplikat produk ditolak.' })
+  }
+
+  const { code: productCode, slug: baseSlug } = await generateProductCode()
+  const slug = baseSlug
 
   const product = await prisma.product.create({
     data: {
       productCode,
+      slug,
       productionOrderId: data.productionOrderId,
       name: data.name,
+      shortDescription: data.shortDescription,
       description: data.description,
-      size: data.size,
-      category: data.category,
+      size: data.size || 'L',
+      category: data.category || 'Outerwear',
+      status: 'draft',
+      primaryImageUrl: data.primaryImageUrl,
       beforeImageUrl: data.beforeImageUrl,
       afterImageUrl: data.afterImageUrl,
-      dataOrigin: DataOrigin.demo
+      dataOrigin: order.dataOrigin
     }
   })
 
-  await createAuditLog(request.user.id, 'CREATE_PRODUCT', 'products', product.id, `Produk ${productCode} dibuat`)
-
-
+  await createAuditLog(request.user.id, 'CREATE_PRODUCT', 'products', product.id, `Produk ${productCode} dibuat dari Order ${order.orderCode}`)
   return reply.status(201).send({ success: true, data: product })
 })
 
+// POST /api/v1/admin/products/:id/publish — Publish product to catalog
+fastify.post('/api/v1/admin/products/:id/publish', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const product = await prisma.product.findUnique({ where: { id } })
+  if (!product) return reply.status(404).send({ success: false, error: 'Produk tidak ditemukan.' })
+  if (product.status === 'published') return reply.status(409).send({ success: false, error: 'Produk sudah dipublikasikan.' })
+
+  const body = request.body as { primaryImageUrl?: string }
+  const updated = await prisma.product.update({
+    where: { id },
+    data: {
+      status: 'published',
+      publishedAt: new Date(),
+      primaryImageUrl: body?.primaryImageUrl || product.primaryImageUrl
+    }
+  })
+
+  // Create catalog item if not exists
+  const catalogSlug = product.slug || product.productCode.toLowerCase()
+  await prisma.catalogItem.upsert({
+    where: { slug: catalogSlug },
+    update: { isAvailable: true },
+    create: {
+      slug: catalogSlug,
+      productId: product.id,
+      title: product.name,
+      price: 499000.0,
+      depositAmount: 150000.0,
+      stock: 1,
+      isAvailable: true,
+      dataOrigin: product.dataOrigin
+    }
+  })
+
+  await createAuditLog(request.user.id, 'PUBLISH_PRODUCT', 'products', id, `Produk ${product.productCode} dipublikasikan`)
+  return reply.send({ success: true, data: updated })
+})
+
+// ----------------------------------------------------
+// Roadmap 5: DPP Management (Admin)
+// ----------------------------------------------------
+
+// GET /api/v1/admin/dpp/:id — Admin DPP detail
+fastify.get('/api/v1/admin/dpp/:id', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+  const { id } = request.params as { id: string }
+  const dpp = await prisma.dppRecord.findUnique({
+    where: { id },
+    include: {
+      product: { include: { productionOrder: { include: { ecoKit: { include: { pattern: true } }, mitraUser: { include: { mitraProfile: true } } } }, impactRecords: true } },
+      dppVersions: { orderBy: { versionNum: 'desc' } }
+    }
+  })
+  if (!dpp) return reply.status(404).send({ success: false, error: 'DPP tidak ditemukan.' })
+  return reply.send({ success: true, data: dpp })
+})
+
+// POST /api/v1/admin/products/:id/publish-dpp — Full DPP creation + publish
 fastify.post('/api/v1/admin/products/:id/publish-dpp', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
   const { id } = request.params as { id: string }
   const product = await prisma.product.findUnique({
     where: { id },
-    include: { productionOrder: { include: { ecoKit: { include: { pattern: true } }, mitraUser: { include: { mitraProfile: true } } } }, impactRecords: true }
+    include: {
+      productionOrder: {
+        include: {
+          ecoKit: { include: { pattern: true, ecoKitItems: { include: { batch: { include: { source: true } } } } } },
+          mitraUser: { include: { mitraProfile: true } },
+          productionProgress: true,
+          qcReviews: { where: { decision: 'approved' }, orderBy: { reviewedAt: 'desc' }, take: 1 }
+        }
+      },
+      impactRecords: true
+    }
   })
 
-  if (!product) {
-    return reply.status(404).send({ success: false, error: 'Produk tidak ditemukan.' })
+  if (!product) return reply.status(404).send({ success: false, error: 'Produk tidak ditemukan.' })
+
+  // Build canonical metadata payload
+  const order = product.productionOrder
+  const kit = order.ecoKit
+  const qcReview = order.qcReviews[0]
+
+  const canonicalPayload = {
+    _version: '1',
+    _publishedAt: new Date().toISOString(),
+    product: {
+      productCode: product.productCode,
+      name: product.name,
+      shortDescription: product.shortDescription,
+      size: product.size,
+      category: product.category,
+      status: product.status,
+      dataOrigin: product.dataOrigin
+    },
+    production: {
+      orderCode: order.orderCode,
+      ecoKitCode: kit.kitCode,
+      ecoKitName: kit.name,
+      patternCode: kit.pattern?.patternCode,
+      patternName: kit.pattern?.name,
+      mitraPublicName: order.mitraUser?.mitraProfile?.workshopName || order.mitraUser?.name || 'Mitra Terverifikasi',
+      qcApprovedAt: qcReview?.reviewedAt?.toISOString() || null,
+      qcStatus: qcReview ? 'approved' : null
+    },
+    materials: kit.ecoKitItems?.map((item: any) => ({
+      batchCode: item.batch?.batchCode,
+      materialType: item.batch?.materialType,
+      category: item.batch?.materialType,
+      sourceType: item.batch?.source?.sourceType || 'waste_bank',
+      allocatedKg: item.quantity,
+      unit: item.unit,
+      dataOrigin: item.batch?.dataOrigin
+    })) || [],
+    impact: product.impactRecords[0] ? {
+      co2SavedKg: product.impactRecords[0].co2SavedKg,
+      waterSavedLiters: product.impactRecords[0].waterSavedLiters,
+      landfillDivertedKg: product.impactRecords[0].landfillDivertedKg,
+      dataOrigin: product.impactRecords[0].dataOrigin,
+      methodology: 'Estimated — EcoThread Textile Waste Reduction Formula v1.0'
+    } : null,
+    verification: {
+      verificationState: 'database_verified',
+      blockchainAnchoringStatus: 'not_yet_enabled',
+      dppPublicUrl: `${DPP_PUBLIC_BASE_URL}/dpp/${product.productCode}`
+    }
   }
+
+  const metadataHash = generateMetadataHash(canonicalPayload)
+  const payloadJson = JSON.stringify(canonicalPayload)
+
+  // Get next version number
+  const existingDpp = await prisma.dppRecord.findUnique({ where: { productId: id }, include: { dppVersions: true } })
+  const nextVersion = existingDpp ? (existingDpp.dppVersions.length + 1) : 1
+
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${DPP_PUBLIC_BASE_URL}/dpp/${product.productCode}`)}`
 
   const dppRecord = await prisma.dppRecord.upsert({
     where: { productId: id },
-    update: { verificationState: DppVerificationState.database_verified },
+    update: {
+      verificationState: DppVerificationState.database_verified,
+      qrCodeUrl,
+      updatedAt: new Date()
+    },
     create: {
       productCode: product.productCode,
       productId: id,
       verificationState: DppVerificationState.database_verified,
-      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${DPP_PUBLIC_BASE_URL}/dpp/${product.productCode}`,
-      dataOrigin: DataOrigin.demo,
-      dppVersions: {
-        create: {
-          versionNum: 1,
-          payloadJson: JSON.stringify({
-            productCode: product.productCode,
-            name: product.name,
-            size: product.size,
-            category: product.category,
-            materialSource: 'Bank Sampah Tekstil Majalaya',
-            mitraName: product.productionOrder.mitraUser?.name || 'Ibu Ratna',
-            impactMetrics: product.impactRecords[0] || { status: 'Belum dihitung' }
-          })
-        }
-      }
-
+      qrCodeUrl,
+      dataOrigin: product.dataOrigin
     }
   })
 
-  await prisma.product.update({
-    where: { id },
-    data: { isPublishedDpp: true }
+  // Create new immutable version
+  const dppVersion = await prisma.dppVersion.create({
+    data: {
+      dppRecordId: dppRecord.id,
+      versionNum: nextVersion,
+      payloadJson,
+      metadataHash,
+      publicationStatus: 'published',
+      createdByUserId: request.user.id
+    }
   })
 
-  // Create or Update Catalog Item so customers can pre-order
-  const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  // Update product published state
+  await prisma.product.update({
+    where: { id },
+    data: {
+      isPublishedDpp: true,
+      status: 'published',
+      publishedAt: product.publishedAt || new Date(),
+      slug: product.slug || product.productCode.toLowerCase()
+    }
+  })
+
+  // Upsert catalog item
+  const catalogSlug = product.slug || product.productCode.toLowerCase()
   await prisma.catalogItem.upsert({
-    where: { slug },
+    where: { slug: catalogSlug },
     update: { stock: 5, isAvailable: true },
     create: {
-      slug,
+      slug: catalogSlug,
       productId: product.id,
       title: product.name,
       price: 499000.0,
       depositAmount: 150000.0,
       stock: 5,
       isAvailable: true,
-      dataOrigin: DataOrigin.demo
+      dataOrigin: product.dataOrigin
     }
   })
 
-  await createAuditLog(request.user.id, 'PUBLISH_DPP', 'dpp_records', dppRecord.id, `DPP dipublikasikan untuk ${product.productCode}`)
+  await createAuditLog(request.user.id, 'PUBLISH_DPP', 'dpp_records', dppRecord.id,
+    `DPP v${nextVersion} dipublikasikan untuk ${product.productCode} (hash: ${metadataHash.substring(0, 16)}...)`)
 
-  return reply.send({ success: true, data: dppRecord })
+  return reply.send({ success: true, data: { dppRecord, dppVersion, metadataHash } })
 })
 
-// Public DPP Route
+// ----------------------------------------------------
+// Roadmap 5: Public Routes
+// ----------------------------------------------------
+
+// Public DPP — only published products
 fastify.get('/api/v1/dpp/:productCode', async (request: any, reply: any) => {
   const { productCode } = request.params as { productCode: string }
   const dpp = await prisma.dppRecord.findUnique({
@@ -1551,49 +1931,70 @@ fastify.get('/api/v1/dpp/:productCode', async (request: any, reply: any) => {
           impactRecords: true,
           productionOrder: {
             include: {
+              ecoKit: { include: { pattern: true, ecoKitItems: { include: { batch: { include: { source: true } } } } } },
               mitraUser: { include: { mitraProfile: true } },
-              productionEvidence: true,
-              qcReviews: true
+              qcReviews: { where: { decision: 'approved' }, orderBy: { reviewedAt: 'desc' }, take: 1 }
             }
           }
         }
       },
-      dppVersions: { orderBy: { versionNum: 'desc' }, take: 1 }
+      dppVersions: { where: { publicationStatus: 'published' }, orderBy: { versionNum: 'desc' }, take: 1 }
     }
   })
 
-  if (!dpp) {
-    return reply.status(404).send({ success: false, error: 'Digital Product Passport (DPP) tidak ditemukan.' })
+  if (!dpp) return reply.status(404).send({ success: false, error: 'Digital Product Passport (DPP) tidak ditemukan.' })
+  if (!dpp.product.isPublishedDpp) return reply.status(404).send({ success: false, error: 'DPP ini belum dipublikasikan.' })
+
+  // Sanitize: remove private fields
+  const publicData = {
+    ...dpp,
+    product: {
+      ...dpp.product,
+      productionOrder: {
+        ...dpp.product.productionOrder,
+        agreedPayoutRate: undefined,
+        rejectionReason: undefined,
+        notes: undefined,
+        mitraUser: {
+          id: dpp.product.productionOrder.mitraUser?.id,
+          name: dpp.product.productionOrder.mitraUser?.name,
+          mitraProfile: {
+            workshopName: dpp.product.productionOrder.mitraUser?.mitraProfile?.workshopName,
+            location: dpp.product.productionOrder.mitraUser?.mitraProfile?.location,
+            specialization: dpp.product.productionOrder.mitraUser?.mitraProfile?.specialization
+          }
+        }
+      }
+    }
   }
 
-  return reply.send({ success: true, data: dpp })
+  return reply.send({ success: true, data: publicData })
 })
 
-// ----------------------------------------------------
-// Public Catalog & Customer Pre-Orders
-// ----------------------------------------------------
-
+// Public Catalog — only published products
 fastify.get('/api/v1/catalog', async () => {
   const items = await prisma.catalogItem.findMany({
-    where: { isAvailable: true },
+    where: { isAvailable: true, product: { status: 'published' } },
     include: { product: { include: { dppRecord: true, impactRecords: true } } }
   })
   return { success: true, data: items }
 })
 
+// Public Catalog Item by slug
 fastify.get('/api/v1/catalog/:slug', async (request: any, reply: any) => {
   const { slug } = request.params as { slug: string }
   const item = await prisma.catalogItem.findUnique({
     where: { slug },
-    include: { product: { include: { dppRecord: true, impactRecords: true } } }
+    include: { product: { include: { dppRecord: { include: { dppVersions: { orderBy: { versionNum: 'desc' }, take: 1 } } }, impactRecords: true, productionOrder: { include: { ecoKit: { include: { pattern: true } }, mitraUser: { include: { mitraProfile: true } } } } } } }
   })
 
-  if (!item) {
-    return reply.status(404).send({ success: false, error: 'Item katalog tidak ditemukan.' })
-  }
+  if (!item) return reply.status(404).send({ success: false, error: 'Item katalog tidak ditemukan.' })
+  if (item.product.status !== 'published') return reply.status(404).send({ success: false, error: 'Produk ini belum dipublikasikan.' })
 
   return reply.send({ success: true, data: item })
 })
+
+
 
 fastify.post('/api/v1/customer-orders', { preHandler: [fastify.authenticate] }, async (request: any, reply: any) => {
   const result = CreateCustomerOrderSchema.safeParse(request.body)

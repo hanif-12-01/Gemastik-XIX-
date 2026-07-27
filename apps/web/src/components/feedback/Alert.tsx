@@ -2,18 +2,25 @@ import React from 'react'
 
 interface AlertProps {
   type?: 'info' | 'warning' | 'error' | 'danger' | 'success'
+  variant?: 'info' | 'warning' | 'error' | 'danger' | 'success'
   title?: string
-  children: React.ReactNode
+  message?: string
+  children?: React.ReactNode
   className?: string
+  onRetry?: () => void
 }
 
 export const Alert: React.FC<AlertProps> = ({
-  type = 'info',
+  type,
+  variant = 'info',
   title,
+  message,
   children,
-  className = ''
+  className = '',
+  onRetry
 }) => {
-  const normalizedType = type === 'danger' ? 'error' : type
+  const activeType = type || variant
+  const normalizedType = activeType === 'danger' ? 'error' : activeType
 
   const colors = {
     info: { bg: 'rgba(59, 130, 246, 0.1)', border: '#3B82F6', text: '#60A5FA' },
@@ -22,7 +29,7 @@ export const Alert: React.FC<AlertProps> = ({
     success: { bg: 'rgba(16, 185, 129, 0.1)', border: '#10B981', text: '#34D399' }
   }
 
-  const current = colors[normalizedType]
+  const current = colors[normalizedType] || colors.info
 
   return (
     <div
@@ -40,8 +47,28 @@ export const Alert: React.FC<AlertProps> = ({
           {title}
         </h4>
       )}
-      <div style={{ color: 'var(--color-text-main)', fontSize: '0.875rem' }}>
-        {children}
+      <div style={{ color: 'var(--color-text-main)', fontSize: '0.875rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          {message && <p style={{ margin: 0 }}>{message}</p>}
+          {children}
+        </div>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            style={{
+              padding: '0.25rem 0.6rem',
+              fontSize: '0.75rem',
+              borderRadius: '4px',
+              border: `1px solid ${current.border}`,
+              background: 'transparent',
+              color: current.text,
+              cursor: 'pointer',
+              marginLeft: '1rem'
+            }}
+          >
+            Coba Lagi
+          </button>
+        )}
       </div>
     </div>
   )

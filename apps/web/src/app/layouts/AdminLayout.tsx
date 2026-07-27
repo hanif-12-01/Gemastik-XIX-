@@ -33,14 +33,14 @@ export const AdminLayout: React.FC = () => {
     { label: 'Batch Material', path: '/admin/materials', icon: Layers },
     { label: 'Pola Garment', path: '/admin/patterns', icon: Scissors },
     { label: 'Eco-Kits', path: '/admin/eco-kits', icon: Package },
-    { label: 'Production Orders', path: '/admin/orders', icon: FileCheck }
+    { label: 'Production Orders', path: '/admin/orders', icon: FileCheck },
+    { label: 'Review QC', path: '/admin/qc', icon: ShieldCheck },
+    { label: 'Manajemen Payout', path: '/admin/payouts', icon: CreditCard },
+    { label: 'Produk & DPP', path: '/admin/products', icon: QrCode }
   ]
 
-  const disabledItems = [
-    { label: 'Review QC (Roadmap 5)', icon: ShieldCheck },
-    { label: 'Manajemen Payout (Roadmap 5)', icon: CreditCard },
-    { label: 'Publikasi DPP (Roadmap 5)', icon: QrCode }
-  ]
+  const disabledItems: Array<{ label: string; icon: any }> = []
+
 
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin'

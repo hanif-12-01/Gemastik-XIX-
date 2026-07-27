@@ -104,6 +104,9 @@ model User {
   notifications  Notification[]
   adminInvitationsCreated AdminInvitation[] @relation("InvitedAdmins")
   passwordResetTokens     PasswordResetToken[]
+  mitraPayouts   Payout[]     @relation("MitraPayouts")
+  adminPaidPayouts Payout[]   @relation("AdminPayoutPaid")
+  dppVersionsCreated DppVersion[] @relation("DppVersionCreator")
 
   @@map("users")
 }
@@ -366,16 +369,23 @@ model ProductionEvidence {
 }
 
 model QcReview {
-  id             String   @id @default(uuid())
-  orderId        String
-  adminUserId    String
-  isApproved     Boolean
-  decisionNotes  String
-  checkFront     Boolean  @default(true)
-  checkBack      Boolean  @default(true)
-  checkStitching Boolean  @default(true)
-  checkMeasures  Boolean  @default(true)
-  reviewedAt     DateTime @default(now())
+  id                   String   @id @default(uuid())
+  orderId              String
+  adminUserId          String
+  decision             String   @default("approved") // approved, revision_required, rejected
+  isApproved           Boolean
+  decisionNotes        String
+  revisionInstructions String?
+  rejectionReason      String?
+  checkFront           Boolean  @default(true)
+  checkBack            Boolean  @default(true)
+  checkStitching       Boolean  @default(true)
+  checkMeasures        Boolean  @default(true)
+  checkQuantity        Boolean  @default(true)
+  checkMaterial        Boolean  @default(true)
+  checkDimensions      Boolean  @default(true)
+  checkCleanliness     Boolean  @default(true)
+  reviewedAt           DateTime @default(now())
 
   order     ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   adminUser User            @relation("AdminQcReviewer", fields: [adminUserId], references: [id])
@@ -398,15 +408,25 @@ model QcFinding {
 
 model Payout {
   id               String       @id @default(uuid())
+  payoutCode       String?      @unique @default(cuid())
   orderId          String
+  mitraUserId      String?
   amount           Float
   status           PayoutStatus @default(pending)
   paymentReference String?
+  paymentMethod    String?
+  eligibleAt       DateTime?
+  approvedAt       DateTime?
   paidAt           DateTime?
+  paidByUserId     String?
+  notes            String?
   dataOrigin       DataOrigin   @default(demo)
   createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @default(now()) @updatedAt
 
-  order ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order       ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  mitraUser   User?           @relation("MitraPayouts", fields: [mitraUserId], references: [id])
+  paidByUser  User?           @relation("AdminPayoutPaid", fields: [paidByUserId], references: [id])
 
   @@map("payouts")
 }
@@ -414,16 +434,22 @@ model Payout {
 model Product {
   id                 String     @id @default(uuid())
   productCode        String     @unique // e.g. PRD-2026-0001
+  slug               String?     @unique @default(cuid())
   productionOrderId  String
   name               String
+  shortDescription   String?
   description        String
   size               String
   category           String
+  status             String     @default("draft") // draft, ready, published, archived
+  primaryImageUrl    String?
   beforeImageUrl     String?
   afterImageUrl      String?
   isPublishedDpp     Boolean    @default(false)
+  publishedAt        DateTime?
   dataOrigin         DataOrigin @default(demo)
   createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @default(now()) @updatedAt
 
   productionOrder  ProductionOrder   @relation(fields: [productionOrderId], references: [id])
   productMaterials ProductMaterial[]
@@ -466,13 +492,17 @@ model DppRecord {
 }
 
 model DppVersion {
-  id          String   @id @default(uuid())
-  dppRecordId String
-  versionNum  Int      @default(1)
-  payloadJson String
-  createdAt   DateTime @default(now())
+  id                String   @id @default(uuid())
+  dppRecordId       String
+  versionNum        Int      @default(1)
+  payloadJson       String
+  metadataHash      String?
+  publicationStatus String   @default("published") // draft, published
+  createdByUserId   String?
+  createdAt         DateTime @default(now())
 
-  dppRecord DppRecord @relation(fields: [dppRecordId], references: [id], onDelete: Cascade)
+  dppRecord     DppRecord @relation(fields: [dppRecordId], references: [id], onDelete: Cascade)
+  createdByUser User?     @relation("DppVersionCreator", fields: [createdByUserId], references: [id])
 
   @@map("dpp_versions")
 }

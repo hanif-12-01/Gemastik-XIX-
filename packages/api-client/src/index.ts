@@ -52,6 +52,28 @@ export class EcoThreadApiClient {
     return json.data
   }
 
+  // Generic HTTP helpers
+  public async get<T = any>(endpoint: string): Promise<{ success: boolean; data: T }> {
+    const data = await this.request<T>(endpoint, { method: 'GET' })
+    return { success: true, data }
+  }
+
+  public async post<T = any>(endpoint: string, body?: any): Promise<{ success: boolean; data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined
+    })
+    return { success: true, data }
+  }
+
+  public async patch<T = any>(endpoint: string, body?: any): Promise<{ success: boolean; data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined
+    })
+    return { success: true, data }
+  }
+
   // Health
   public async getHealth() {
     return this.request('/health')

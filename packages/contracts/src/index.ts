@@ -236,28 +236,75 @@ export const SubmitQcEvidenceSchema = z.object({
 
 
 export const QcDecisionSchema = z.object({
-  isApproved: z.boolean(),
-  decisionNotes: z.string().min(3),
+  decision: z.enum(['approved', 'revision_required', 'rejected']),
+  decisionNotes: z.string().min(3, 'Catatan keputusan minimal 3 karakter'),
+  revisionInstructions: z.string().optional(),
+  rejectionReason: z.string().optional(),
+  // Category A: Product Identity
+  checkOrderCode: z.boolean().default(true),
+  checkPatternMatch: z.boolean().default(true),
+  checkQuantity: z.boolean().default(true),
+  // Category B: Construction Quality
   checkFront: z.boolean().default(true),
   checkBack: z.boolean().default(true),
   checkStitching: z.boolean().default(true),
-  checkMeasures: z.boolean().default(true)
+  checkSeamConsistency: z.boolean().default(true),
+  checkAttachmentStrength: z.boolean().default(true),
+  // Category C: Material Usage
+  checkMaterial: z.boolean().default(true),
+  checkNoSubstitution: z.boolean().default(true),
+  // Category D: Dimensions
+  checkMeasures: z.boolean().default(true),
+  checkDimensions: z.boolean().default(true),
+  // Category E: Cleanliness
+  checkCleanliness: z.boolean().default(true),
+  checkReadyForPhotography: z.boolean().default(true),
+  // Category F: Evidence Completeness
+  checkFrontPhoto: z.boolean().default(true),
+  checkBackPhoto: z.boolean().default(true),
+  checkDetailPhoto: z.boolean().default(true)
+}).superRefine((data, ctx) => {
+  if (data.decision === 'revision_required' && !data.revisionInstructions) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Instruksi revisi wajib diisi untuk keputusan revision_required', path: ['revisionInstructions'] })
+  }
+  if (data.decision === 'rejected' && !data.rejectionReason) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Alasan penolakan wajib diisi untuk keputusan rejected', path: ['rejectionReason'] })
+  }
 })
 
-export const MarkPaidSchema = z.object({
-  paymentReference: z.string().min(3)
+export const MarkPayoutPaidSchema = z.object({
+  paymentReference: z.string().min(3, 'Referensi pembayaran minimal 3 karakter'),
+  paymentMethod: z.string().min(2).default('bank_transfer'),
+  paidAt: z.string().datetime().optional(),
+  notes: z.string().optional()
 })
+
+// Keep backward-compat alias
+export const MarkPaidSchema = MarkPayoutPaidSchema
 
 export const CreateProductSchema = z.object({
-  productCode: z.string().optional(),
   productionOrderId: z.string().uuid(),
   name: z.string().min(3),
+  shortDescription: z.string().max(200).optional(),
   description: z.string().min(5),
   size: z.string().default('L'),
   category: z.string().default('Outerwear'),
+  primaryImageUrl: z.string().optional(),
   beforeImageUrl: z.string().optional(),
   afterImageUrl: z.string().optional()
 })
+
+export const UpdateProductSchema = CreateProductSchema.partial()
+
+export const PublishProductSchema = z.object({
+  primaryImageUrl: z.string().optional()
+})
+
+export const PublishDppSchema = z.object({
+  notes: z.string().optional()
+})
+
+
 
 export const CreateCustomerOrderSchema = z.object({
   catalogItemId: z.string().uuid(),

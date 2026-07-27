@@ -35,6 +35,15 @@ import { AdminEcoKitsPage } from '../pages/admin/AdminEcoKitsPage'
 import { AdminProductionOrdersPage } from '../pages/admin/AdminProductionOrdersPage'
 import { AdminOrderDetailPage } from '../pages/admin/AdminOrderDetailPage'
 
+// Admin Pages (Roadmap 5)
+import { AdminQcQueuePage } from '../pages/admin/AdminQcQueuePage'
+import { AdminQcDetailPage } from '../pages/admin/AdminQcDetailPage'
+import { AdminPayoutsPage } from '../pages/admin/AdminPayoutsPage'
+import { AdminPayoutDetailPage } from '../pages/admin/AdminPayoutDetailPage'
+import { AdminProductsPage } from '../pages/admin/AdminProductsPage'
+import { AdminProductDetailPage } from '../pages/admin/AdminProductDetailPage'
+import { AdminCreateProductPage } from '../pages/admin/AdminCreateProductPage'
+
 // Mitra Pages (Roadmap 4)
 import { MitraDashboardPage } from '../pages/mitra/MitraDashboardPage'
 import { MitraOrdersPage } from '../pages/mitra/MitraOrdersPage'
@@ -97,7 +106,15 @@ export const router = createBrowserRouter([
       { path: 'patterns', element: <AdminPatternsPage /> },
       { path: 'eco-kits', element: <AdminEcoKitsPage /> },
       { path: 'orders', element: <AdminProductionOrdersPage /> },
-      { path: 'orders/:id', element: <AdminOrderDetailPage /> }
+      { path: 'orders/:id', element: <AdminOrderDetailPage /> },
+      // Roadmap 5
+      { path: 'qc', element: <AdminQcQueuePage /> },
+      { path: 'qc/:id', element: <AdminQcDetailPage /> },
+      { path: 'payouts', element: <AdminPayoutsPage /> },
+      { path: 'payouts/:id', element: <AdminPayoutDetailPage /> },
+      { path: 'products', element: <AdminProductsPage /> },
+      { path: 'products/new', element: <AdminCreateProductPage /> },
+      { path: 'products/:id', element: <AdminProductDetailPage /> }
     ]
   },
 
