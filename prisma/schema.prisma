@@ -1,0 +1,518 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------
+// Enums
+// ----------------------------------------------------
+
+enum Role {
+  admin
+  mitra
+  user
+}
+
+enum DataOrigin {
+  demo
+  actual
+  target
+}
+
+enum ProductionOrderStatus {
+  draft
+  offered
+  accepted
+  rejected_by_mitra
+  kit_preparing
+  kit_shipped
+  kit_received
+  in_progress
+  submitted_to_qc
+  qc_revision
+  qc_approved
+  payout_pending
+  paid
+  completed
+  cancelled
+}
+
+enum PayoutStatus {
+  pending
+  approved
+  processing
+  paid
+  failed
+  cancelled
+}
+
+enum DppVerificationState {
+  database_verified
+  anchoring_pending
+  blockchain_verified
+  anchoring_failed
+}
+
+enum CustomerOrderStatus {
+  pending_payment
+  payment_submitted
+  payment_verified
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+// ----------------------------------------------------
+// Core Entities
+// ----------------------------------------------------
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(user)
+  name         String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  dataOrigin   DataOrigin    @default(demo)
+
+  userProfile    UserProfile?
+  mitraProfile   MitraProfile?
+  assignedOrders ProductionOrder[] @relation("AssignedMitra")
+  qcReviews      QcReview[]        @relation("AdminQcReviewer")
+  customerOrders CustomerOrder[]
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  phone       String?
+  address     String?
+  avatarUrl   String?
+  preferences String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model MitraProfile {
+  id              String     @id @default(uuid())
+  userId          String     @unique
+  workshopName    String
+  specialization  String?
+  capacityPerWeek Int        @default(10)
+  location        String
+  rating          Float      @default(5.0)
+  totalPaidOut    Float      @default(0.0)
+  bankAccountInfo String?
+  isVerified      Boolean    @default(true)
+  dataOrigin      DataOrigin @default(demo)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mitra_profiles")
+}
+
+model MaterialSource {
+  id         String     @id @default(uuid())
+  sourceCode String     @unique
+  name       String
+  category   String
+  location   String
+  contact    String?
+  dataOrigin DataOrigin @default(demo)
+
+  batches MaterialBatch[]
+
+  @@map("material_sources")
+}
+
+model MaterialBatch {
+  id               String      @id @default(uuid())
+  batchCode        String      @unique // e.g. MAT-2026-0001
+  sourceId         String
+  materialType     String
+  weightKg         Float
+  color            String?
+  sortingDetails   String?
+  imageUrl         String?
+  sanitizationDate DateTime?
+  status           String      @default("sorted") // received, sanitized, ready_for_kit
+  dataOrigin       DataOrigin  @default(demo)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  source              MaterialSource       @relation(fields: [sourceId], references: [id])
+  sanitizationRecords SanitizationRecord[]
+  ecoKitItems         EcoKitItem[]
+  productMaterials    ProductMaterial[]
+
+  @@map("material_batches")
+}
+
+model SanitizationRecord {
+  id               String   @id @default(uuid())
+  batchId          String
+  method           String // steam, wash, ozone
+  temperatureC     Float?
+  operator         String
+  sanitizedAt      DateTime @default(now())
+  passedInspection Boolean  @default(true)
+  notes            String?
+
+  batch MaterialBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@map("sanitization_records")
+}
+
+model Pattern {
+  id          String     @id @default(uuid())
+  patternCode String     @unique // e.g. PAT-2026-0001
+  name        String
+  category    String
+  description String?
+  dataOrigin  DataOrigin @default(demo)
+  createdAt   DateTime   @default(now())
+
+  versions PatternVersion[]
+  ecoKits  EcoKit[]
+
+  @@map("patterns")
+}
+
+model PatternVersion {
+  id          String   @id @default(uuid())
+  patternId   String
+  versionCode String   @default("v1.0")
+  fileUrl     String?
+  instructions String?
+  isApproved  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@map("pattern_versions")
+}
+
+model EcoKit {
+  id          String     @id @default(uuid())
+  kitCode     String     @unique // e.g. KIT-2026-0001
+  patternId   String
+  name        String
+  difficulty  String     @default("Medium")
+  targetHours Float      @default(5.0)
+  status      String     @default("ready") // ready, allocated
+  dataOrigin  DataOrigin @default(demo)
+  createdAt   DateTime   @default(now())
+
+  pattern          Pattern           @relation(fields: [patternId], references: [id])
+  ecoKitItems      EcoKitItem[]
+  productionOrders ProductionOrder[]
+
+  @@map("eco_kits")
+}
+
+model EcoKitItem {
+  id         String   @id @default(uuid())
+  kitId      String
+  batchId    String
+  quantity   Float
+  unit       String   @default("kg")
+  itemNotes  String?
+
+  kit   EcoKit        @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  batch MaterialBatch @relation(fields: [batchId], references: [id])
+
+  @@map("eco_kit_items")
+}
+
+model ProductionOrder {
+  id                String                @id @default(uuid())
+  orderCode         String                @unique // e.g. ORD-2026-0001
+  ecoKitId          String
+  mitraUserId       String?
+  status            ProductionOrderStatus @default(draft)
+  targetCompletion  DateTime?
+  agreedPayoutRate  Float                 @default(150000.0)
+  rejectionReason   String?
+  dataOrigin        DataOrigin            @default(demo)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  ecoKit             EcoKit               @relation(fields: [ecoKitId], references: [id])
+  mitraUser          User?                @relation("AssignedMitra", fields: [mitraUserId], references: [id])
+  productionProgress ProductionProgress[]
+  productionEvidence ProductionEvidence[]
+  qcReviews          QcReview[]
+  payouts            Payout[]
+  products           Product[]
+
+  @@map("production_orders")
+}
+
+model ProductionProgress {
+  id          String   @id @default(uuid())
+  orderId     String
+  stepName    String
+  percentage  Float    @default(0.0)
+  notes       String?
+  updatedAt   DateTime @default(now())
+
+  order ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("production_progress")
+}
+
+model ProductionEvidence {
+  id          String   @id @default(uuid())
+  orderId     String
+  frontPhoto  String
+  backPhoto   String
+  detailPhoto String
+  notes       String?
+  actualSize  String?
+  submittedAt DateTime @default(now())
+
+  order ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("production_evidence")
+}
+
+model QcReview {
+  id             String   @id @default(uuid())
+  orderId        String
+  adminUserId    String
+  isApproved     Boolean
+  decisionNotes  String
+  checkFront     Boolean  @default(true)
+  checkBack      Boolean  @default(true)
+  checkStitching Boolean  @default(true)
+  checkMeasures  Boolean  @default(true)
+  reviewedAt     DateTime @default(now())
+
+  order     ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  adminUser User            @relation("AdminQcReviewer", fields: [adminUserId], references: [id])
+  qcFindings QcFinding[]
+
+  @@map("qc_reviews")
+}
+
+model QcFinding {
+  id          String   @id @default(uuid())
+  qcReviewId  String
+  issueType   String
+  description String
+  severity    String   @default("minor") // minor, major, critical
+
+  qcReview QcReview @relation(fields: [qcReviewId], references: [id], onDelete: Cascade)
+
+  @@map("qc_findings")
+}
+
+model Payout {
+  id               String       @id @default(uuid())
+  orderId          String
+  amount           Float
+  status           PayoutStatus @default(pending)
+  paymentReference String?
+  paidAt           DateTime?
+  dataOrigin       DataOrigin   @default(demo)
+  createdAt        DateTime     @default(now())
+
+  order ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payouts")
+}
+
+model Product {
+  id                 String     @id @default(uuid())
+  productCode        String     @unique // e.g. PRD-2026-0001
+  productionOrderId  String
+  name               String
+  description        String
+  size               String
+  category           String
+  beforeImageUrl     String?
+  afterImageUrl      String?
+  isPublishedDpp     Boolean    @default(false)
+  dataOrigin         DataOrigin @default(demo)
+  createdAt          DateTime   @default(now())
+
+  productionOrder  ProductionOrder   @relation(fields: [productionOrderId], references: [id])
+  productMaterials ProductMaterial[]
+  dppRecord        DppRecord?
+  impactRecords    ImpactRecord[]
+  catalogItems     CatalogItem[]
+
+  @@map("products")
+}
+
+model ProductMaterial {
+  id        String @id @default(uuid())
+  productId String
+  batchId   String
+  weightKg  Float
+
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batch   MaterialBatch @relation(fields: [batchId], references: [id])
+
+  @@map("product_materials")
+}
+
+model DppRecord {
+  id                String               @id @default(uuid())
+  productCode       String               @unique
+  productId         String               @unique
+  verificationState DppVerificationState @default(database_verified)
+  blockchainTxHash  String?
+  blockchainChainId Int?
+  explorerUrl       String?
+  qrCodeUrl         String?
+  dataOrigin        DataOrigin           @default(demo)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  dppVersions DppVersion[]
+
+  @@map("dpp_records")
+}
+
+model DppVersion {
+  id          String   @id @default(uuid())
+  dppRecordId String
+  versionNum  Int      @default(1)
+  payloadJson String
+  createdAt   DateTime @default(now())
+
+  dppRecord DppRecord @relation(fields: [dppRecordId], references: [id], onDelete: Cascade)
+
+  @@map("dpp_versions")
+}
+
+model ImpactRecord {
+  id                 String     @id @default(uuid())
+  productId          String
+  co2SavedKg         Float
+  waterSavedLiters   Float
+  landfillDivertedKg Float
+  dataOrigin         DataOrigin @default(demo)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("impact_records")
+}
+
+model CatalogItem {
+  id               String     @id @default(uuid())
+  slug             String     @unique
+  productId        String
+  title            String
+  price            Float
+  depositAmount    Float
+  stock            Int        @default(1)
+  isAvailable      Boolean    @default(true)
+  dataOrigin       DataOrigin @default(demo)
+
+  product           Product             @relation(fields: [productId], references: [id])
+  customerOrderItems CustomerOrderItem[]
+
+  @@map("catalog_items")
+}
+
+model CustomerOrder {
+  id              String              @id @default(uuid())
+  orderCode       String              @unique // e.g. CORD-2026-0001
+  userId          String
+  status          CustomerOrderStatus @default(pending_payment)
+  totalAmount     Float
+  depositPaid     Float               @default(0.0)
+  shippingAddress String
+  dataOrigin      DataOrigin          @default(demo)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id])
+  customerOrderItems CustomerOrderItem[]
+  payments           Payment[]
+
+  @@map("customer_orders")
+}
+
+model CustomerOrderItem {
+  id              String @id @default(uuid())
+  customerOrderId String
+  catalogItemId   String
+  quantity        Int    @default(1)
+  unitPrice       Float
+
+  customerOrder CustomerOrder @relation(fields: [customerOrderId], references: [id], onDelete: Cascade)
+  catalogItem   CatalogItem   @relation(fields: [catalogItemId], references: [id])
+
+  @@map("customer_order_items")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  customerOrderId String
+  amount          Float
+  paymentProofUrl String?
+  paymentMethod   String   @default("bank_transfer")
+  isVerified      Boolean  @default(false)
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  customerOrder CustomerOrder @relation(fields: [customerOrderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model Job {
+  id         String   @id @default(uuid())
+  jobType    String   // material_segmentation, dpp_anchoring
+  status     String   @default("queued") // queued, processing, completed, failed
+  payload    String
+  result     String?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("jobs")
+}
