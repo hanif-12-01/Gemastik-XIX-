@@ -75,10 +75,12 @@ pnpm build
 ### 2. Opsi Deployment Backend & Database
 - **Backend API (`apps/api`)**: Deploy ke Render / Railway / Railway / VPS dengan `NODE_ENV=production` dan `npm run start`.
 - **Database**: PostgreSQL di Supabase / NeonDB. Set `DATABASE_URL` pada environment provider.
-- **Frontend Apps (`apps/admin`, `apps/mitra`, `apps/user`)**: Deploy ke Vercel / Netlify / Cloudflare Pages.
-  - Root directory: `apps/admin` (atau `apps/mitra`, `apps/user`).
-  - Build command: `pnpm build`
-  - Output directory: `dist`
+- **Frontend Single Web Application (`apps/web`)**: Deploy ke Vercel (ADR-001)
+  - Vercel Project: `ecothread-web`
+  - Root Directory: `apps/web`
+  - Framework Preset: `Vite`
+  - Build Command: `pnpm --filter @ecothread/web build`
+  - Output Directory: `dist`
 
 ### 3. Docker Deployment (Optional Single Container)
 ```dockerfile
