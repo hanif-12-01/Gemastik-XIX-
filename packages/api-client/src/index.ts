@@ -23,6 +23,35 @@ export class EcoThreadApiClient {
     this.on401Callback = callback
   }
 
+  private async fetchApi(endpoint: string, options: RequestInit): Promise<Response> {
+    try {
+      return await fetch(`${this.baseUrl}${endpoint}`, options)
+    } catch {
+      throw new Error('Tidak dapat terhubung ke layanan EcoThread. Pastikan server API aktif, lalu coba lagi.')
+    }
+  }
+
+  private async readApiResponse(res: Response): Promise<any> {
+    const responseText = await res.text()
+
+    if (!responseText.trim()) {
+      throw new Error(`Layanan EcoThread tidak memberikan respons (HTTP ${res.status}). Pastikan server API aktif, lalu coba lagi.`)
+    }
+
+    try {
+      return JSON.parse(responseText)
+    } catch {
+      const contentType = res.headers.get('content-type') || ''
+      const isHtml = contentType.includes('text/html') || responseText.trimStart().startsWith('<')
+
+      if (isHtml) {
+        throw new Error('Layanan login belum terhubung ke server API. Pastikan API EcoThread aktif, lalu coba lagi.')
+      }
+
+      throw new Error(`Layanan EcoThread mengirim respons yang tidak valid (HTTP ${res.status}). Silakan coba lagi.`)
+    }
+  }
+
   private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -33,18 +62,19 @@ export class EcoThreadApiClient {
       headers['Authorization'] = `Bearer ${this.token}`
     }
 
-    const res = await fetch(`${this.baseUrl}${endpoint}`, {
+    const res = await this.fetchApi(endpoint, {
       ...options,
       headers
     })
 
-    if (res.status === 401 && this.on401Callback) {
+    // A 401 during login means invalid credentials, not an expired session.
+    if (res.status === 401 && this.token && this.on401Callback) {
       this.token = null
       this.on401Callback()
       throw new Error('Sesi telah berakhir. Silakan login kembali.')
     }
 
-    const json = await res.json()
+    const json = await this.readApiResponse(res)
     if (!res.ok || !json.success) {
       throw new Error(json.error || `HTTP Error ${res.status}`)
     }
@@ -61,19 +91,19 @@ export class EcoThreadApiClient {
       headers['Authorization'] = `Bearer ${this.token}`
     }
 
-    const res = await fetch(`${this.baseUrl}/uploads/qc`, {
+    const res = await this.fetchApi('/uploads/qc', {
       method: 'POST',
       headers,
       body: formData
     })
 
-    if (res.status === 401 && this.on401Callback) {
+    if (res.status === 401 && this.token && this.on401Callback) {
       this.token = null
       this.on401Callback()
       throw new Error('Sesi telah berakhir. Silakan login kembali.')
     }
 
-    const json = await res.json()
+    const json = await this.readApiResponse(res)
     if (!res.ok || !json.success) {
       throw new Error(json.error || `HTTP Error ${res.status}`)
     }
