@@ -359,3 +359,80 @@ export interface ApiResponse<T = any> {
   message?: string
   meta?: Record<string, any>
 }
+
+// ----------------------------------------------------
+// DPP Blockchain Anchoring (Roadmap 9 — Polygon Amoy)
+// ----------------------------------------------------
+
+export const DppAnchorStatusEnum = z.enum([
+  'pending',
+  'submitting',
+  'transaction_submitted',
+  'confirmed',
+  'verified',
+  'failed',
+  'reconciliation_required'
+])
+
+export type DppAnchorStatus = z.infer<typeof DppAnchorStatusEnum>
+
+export const AnchorDppOnAmoySchema = z.object({
+  versionNum: z.number().int().positive().optional(),
+  notes: z.string().optional()
+})
+
+export const ReconcileDppAnchorSchema = z.object({
+  anchorId: z.string().uuid().optional()
+})
+
+export const RetryDppAnchorSchema = z.object({
+  reason: z.string().optional()
+})
+
+export interface PublicDppBlockchainVerification {
+  isVerifiedOnChain: boolean
+  verificationState: string
+  networkName: string
+  chainId: number
+  contractAddress: string | null
+  transactionHash: string | null
+  blockNumber: number | null
+  confirmedAt: string | null
+  dppKey: string | null
+  metadataHash: string | null
+  canonicalizationVersion: string | null
+  explorerTransactionUrl: string | null
+  explorerContractUrl: string | null
+  disclaimer: string
+  disclaimerEn: string
+}
+
+export interface AdminDppBlockchainAnchorView {
+  id: string
+  dppRecordId: string
+  dppVersionId: string
+  network: string
+  chainId: number
+  contractAddress: string
+  dppKey: string
+  versionNum: number
+  metadataHash: string
+  canonicalizationVersion: string
+  status: DppAnchorStatus
+  transactionHash: string | null
+  blockNumber: number | null
+  blockHash: string | null
+  blockTimestamp: string | null
+  issuerAddress: string | null
+  submittedAt: string | null
+  confirmedAt: string | null
+  lastCheckedAt: string | null
+  retryCount: number
+  failureCode: string | null
+  failureMessage: string | null
+  explorerTransactionUrl: string | null
+  explorerContractUrl: string | null
+  createdAt: string
+  updatedAt: string
+}
+

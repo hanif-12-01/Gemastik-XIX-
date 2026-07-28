@@ -46,6 +46,9 @@ import {
 } from '@ecothread/contracts'
 import fastifyMultipart from '@fastify/multipart'
 import { put } from '@vercel/blob'
+import { anchorDppVersionOnAmoy, reconcileDppAnchor, getPublicBlockchainVerificationView } from './services/blockchain/anchor'
+import { deriveDppKey, computeCanonicalKeccak256Hash } from './services/blockchain/contract'
+import { buildExplorerTxUrl, buildExplorerContractUrl, getBlockchainConfig } from './services/blockchain/config'
 
 // -------------------------------------------------------
 // Augment Fastify types
@@ -1007,7 +1010,7 @@ export async function buildApp() {
       impact: product.impactRecords[0] ? { co2SavedKg: product.impactRecords[0].co2SavedKg, waterSavedLiters: product.impactRecords[0].waterSavedLiters, landfillDivertedKg: product.impactRecords[0].landfillDivertedKg, dataOrigin: product.impactRecords[0].dataOrigin, methodology: 'Estimated — EcoThread Textile Waste Reduction Formula v1.0' } : null,
       verification: { verificationState: 'database_verified', blockchainAnchoringStatus: 'not_yet_enabled', dppPublicUrl: `${DPP_PUBLIC_BASE_URL}/dpp/${product.productCode}` }
     }
-    const metadataHash = generateMetadataHash(canonicalPayload)
+    const metadataHash = computeCanonicalKeccak256Hash(canonicalPayload)
     const payloadJson = JSON.stringify(canonicalPayload)
     const existingDpp = await prisma.dppRecord.findUnique({ where: { productId: id }, include: { dppVersions: true } })
     const nextVersion = existingDpp ? existingDpp.dppVersions.length + 1 : 1
@@ -1021,7 +1024,104 @@ export async function buildApp() {
     return reply.send({ success: true, data: { dppRecord, dppVersion, metadataHash } })
   })
 
+  // ─── Admin: DPP Blockchain Anchoring (Roadmap 9 — Polygon Amoy) ───
+  fastify.get('/api/v1/admin/dpp/:id/blockchain-anchor', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+    const { id } = request.params as { id: string }
+    const config = getBlockchainConfig()
+    const dppRecord = await prisma.dppRecord.findUnique({
+      where: { id },
+      include: {
+        dppVersions: { orderBy: { versionNum: 'desc' } },
+        blockchainAnchors: { orderBy: { createdAt: 'desc' } }
+      }
+    })
+    if (!dppRecord) return reply.status(404).send({ success: false, error: 'DPP tidak ditemukan.' })
+
+    const latestVersion = dppRecord.dppVersions[0]
+    const latestAnchor = latestVersion
+      ? await prisma.dppBlockchainAnchor.findUnique({ where: { dppVersionId_network: { dppVersionId: latestVersion.id, network: 'polygon_amoy' } } })
+      : null
+
+    const dppKey = deriveDppKey(dppRecord.productCode)
+
+    return reply.send({
+      success: true,
+      data: {
+        dppRecordId: dppRecord.id,
+        productCode: dppRecord.productCode,
+        dppKey,
+        latestVersionNum: latestVersion?.versionNum || 1,
+        verificationState: dppRecord.verificationState,
+        featureConfig: {
+          enabled: config.enabled,
+          networkName: config.networkName,
+          chainId: config.chainId,
+          contractAddress: config.contractAddress,
+          issuerAddress: config.issuerAddress,
+          explorerUrl: config.explorerUrl
+        },
+        anchor: latestAnchor
+          ? {
+              ...latestAnchor,
+              explorerTransactionUrl: buildExplorerTxUrl(latestAnchor.transactionHash),
+              explorerContractUrl: buildExplorerContractUrl(latestAnchor.contractAddress)
+            }
+          : null,
+        history: dppRecord.blockchainAnchors.map((a) => ({
+          ...a,
+          explorerTransactionUrl: buildExplorerTxUrl(a.transactionHash),
+          explorerContractUrl: buildExplorerContractUrl(a.contractAddress)
+        }))
+      }
+    })
+  })
+
+  fastify.post('/api/v1/admin/dpp/:id/anchor-amoy', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+    const { id } = request.params as { id: string }
+    const { versionNum } = (request.body as { versionNum?: number }) || {}
+    const result = await anchorDppVersionOnAmoy(prisma, id, versionNum, request.user.id)
+    if (!result.success) {
+      return reply.status(400).send({ success: false, error: result.error, errorCode: result.errorCode, data: result.anchorRecord })
+    }
+    await createAuditLog(prisma, request.user.id, 'ANCHOR_DPP_AMOY', 'dpp_records', id, `Tx: ${result.anchorRecord?.transactionHash || 'pending'}`)
+    return reply.send({ success: true, data: result.anchorRecord, message: 'Proses anchoring ke Polygon Amoy berhasil dikirim.' })
+  })
+
+  fastify.post('/api/v1/admin/dpp/:id/blockchain-anchor/reconcile', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+    const { id } = request.params as { id: string }
+    const result = await reconcileDppAnchor(prisma, id)
+    if (!result.success) {
+      return reply.status(400).send({ success: false, error: result.error, errorCode: result.errorCode, data: result.anchorRecord })
+    }
+    await createAuditLog(prisma, request.user.id, 'RECONCILE_DPP_AMOY', 'dpp_records', id)
+    return reply.send({ success: true, data: result.anchorRecord, message: 'Rekonsiliasi status blockchain berhasil diperbarui.' })
+  })
+
+  fastify.post('/api/v1/admin/dpp/:id/blockchain-anchor/retry', { preHandler: [fastify.authenticate, checkRole([Role.admin])] }, async (request: any, reply: any) => {
+    const { id } = request.params as { id: string }
+    const { versionNum } = (request.body as { versionNum?: number }) || {}
+
+    // First attempt reconciliation before resubmitting
+    const reconcileRes = await reconcileDppAnchor(prisma, id)
+    if (reconcileRes.success && reconcileRes.anchorRecord?.status === 'verified') {
+      return reply.send({ success: true, data: reconcileRes.anchorRecord, message: 'Status transaksi sudah terverifikasi on-chain.' })
+    }
+
+    const result = await anchorDppVersionOnAmoy(prisma, id, versionNum, request.user.id)
+    if (!result.success) {
+      return reply.status(400).send({ success: false, error: result.error, errorCode: result.errorCode, data: result.anchorRecord })
+    }
+    await createAuditLog(prisma, request.user.id, 'RETRY_DPP_AMOY', 'dpp_records', id)
+    return reply.send({ success: true, data: result.anchorRecord, message: 'Ulangi pengiriman transaksi anchoring berhasil.' })
+  })
+
   // ─── Public Routes ─────────────────────────────────────
+  fastify.get('/api/v1/public/dpp/:productCode/blockchain-verification', async (request: any, reply: any) => {
+    const { productCode } = request.params as { productCode: string }
+    const verificationView = await getPublicBlockchainVerificationView(prisma, productCode)
+    return reply.send({ success: true, data: verificationView })
+  })
+
   fastify.get('/api/v1/dpp/:productCode', async (request: any, reply: any) => {
     const { productCode } = request.params as { productCode: string }
     const dpp = await prisma.dppRecord.findUnique({ where: { productCode }, include: { product: { include: { impactRecords: true, productionOrder: { include: { ecoKit: { include: { pattern: true, ecoKitItems: { include: { batch: { include: { source: true } } } } } }, mitraUser: { include: { mitraProfile: true } }, qcReviews: { where: { decision: 'approved' }, orderBy: { reviewedAt: 'desc' }, take: 1 } } } } }, dppVersions: { where: { publicationStatus: 'published' }, orderBy: { versionNum: 'desc' }, take: 1 } } })

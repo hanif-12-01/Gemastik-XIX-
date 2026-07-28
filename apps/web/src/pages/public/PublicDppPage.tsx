@@ -13,16 +13,25 @@ export const PublicDppPage: React.FC = () => {
 
   const [loading, setLoading] = useState<boolean>(true)
   const [dppData, setDppData] = useState<any>(null)
+  const [blockchainData, setBlockchainData] = useState<any>(null)
 
   useEffect(() => {
     async function fetchDpp() {
       try {
         setLoading(true)
-        const data = await apiClient.getDpp(code)
-        if (data) {
-          setDppData(data)
+        const [dppRes, chainRes] = await Promise.allSettled([
+          apiClient.getDpp(code),
+          apiClient.getPublicDppBlockchainVerification(code)
+        ])
+
+        if (dppRes.status === 'fulfilled' && dppRes.value) {
+          setDppData(dppRes.value)
         }
-      } catch (err) {
+
+        if (chainRes.status === 'fulfilled' && chainRes.value) {
+          setBlockchainData(chainRes.value)
+        }
+      } catch (_) {
         // Fallback to verified canonical demo state
       } finally {
         setLoading(false)
@@ -43,10 +52,12 @@ export const PublicDppPage: React.FC = () => {
     waterSavedLiters: 2450
   }
 
+  const isVerifiedOnChain = blockchainData?.isVerifiedOnChain || false
+
   return (
     <div style={{ padding: '3.5rem 0 5rem', backgroundColor: 'var(--color-bg-main)' }}>
       <div className="container-narrow">
-        {/* Header Header */}
+        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <Badge variant="success" className="mb-2">Official Digital Product Passport</Badge>
           <h1 style={{ fontSize: '2.25rem', color: '#FFF', marginBottom: '0.5rem' }}>Paspor Sirkular Produk</h1>
@@ -60,22 +71,89 @@ export const PublicDppPage: React.FC = () => {
         ) : (
           <>
             {/* Status Verification Card */}
-            <Card style={{ marginBottom: '1.5rem', borderColor: 'var(--color-primary)' }}>
+            <Card style={{ marginBottom: '1.5rem', borderColor: isVerifiedOnChain ? 'var(--color-success)' : 'var(--color-primary)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <Database color="var(--color-primary)" size={28} />
+                  {isVerifiedOnChain ? (
+                    <ShieldCheck color="var(--color-success)" size={32} />
+                  ) : (
+                    <Database color="var(--color-primary)" size={28} />
+                  )}
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Status Verifikasi</span>
-                    <h3 style={{ color: '#FFF', fontSize: '1.25rem' }}>Database Verified</h3>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Status Verifikasi Utama</span>
+                    <h3 style={{ color: '#FFF', fontSize: '1.25rem', margin: 0 }}>
+                      {isVerifiedOnChain ? 'Database & Blockchain Verified' : 'Database Verified'}
+                    </h3>
                   </div>
                 </div>
-                <Badge variant="success">Tercatat di Ledger Canonical EcoThread</Badge>
+
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <Badge variant="success">PostgreSQL System of Record</Badge>
+                  {isVerifiedOnChain && <Badge variant="info">Polygon Amoy Testnet</Badge>}
+                </div>
               </div>
             </Card>
 
-            <Alert type="info" title="Status Transparansi & Blockchain">
-              Paspor digital ini diverifikasi secara penuh di basis data canonical EcoThread. Integrasi penjangkaran (*anchoring*) hash metadata ke jaringan <strong>Polygon Amoy Testnet</strong> direncanakan pada roadmap rilis berikutnya.
-            </Alert>
+            {/* Polygon Amoy Testnet Anchoring Section */}
+            {isVerifiedOnChain && blockchainData ? (
+              <Card style={{ marginBottom: '1.5rem', border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <ShieldCheck size={20} color="var(--color-success)" />
+                  <h3 style={{ fontSize: '1.1rem', color: '#FFF', margin: 0 }}>
+                    Integritas Hash On-Chain — Polygon Amoy Testnet
+                  </h3>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Jaringan</span><br />
+                    <strong style={{ color: '#FFF' }}>{blockchainData.networkName} (Chain ID {blockchainData.chainId})</strong>
+                  </div>
+
+                  {blockchainData.blockNumber && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Nomor Blok</span><br />
+                      <strong style={{ color: '#FFF' }}>#{blockchainData.blockNumber}</strong>
+                    </div>
+                  )}
+
+                  {blockchainData.confirmedAt && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Waktu Konfirmasi</span><br />
+                      <strong style={{ color: '#FFF' }}>{new Date(blockchainData.confirmedAt).toLocaleString('id-ID')}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {blockchainData.metadataHash && (
+                  <div style={{ background: 'var(--color-surface-2)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-dim)', wordBreak: 'break-all', marginBottom: '0.75rem' }}>
+                    <span style={{ color: 'var(--color-primary)' }}>Keccak-256 Metadata Hash:</span> {blockchainData.metadataHash}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  {blockchainData.explorerTransactionUrl && (
+                    <a href={blockchainData.explorerTransactionUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'underline' }}>
+                      <LinkIcon size={14} />Lihat Transaksi di PolygonScan
+                    </a>
+                  )}
+
+                  {blockchainData.explorerContractUrl && (
+                    <a href={blockchainData.explorerContractUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'underline' }}>
+                      <LinkIcon size={14} />Lihat Smart Contract
+                    </a>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
+                  {blockchainData.disclaimer}
+                </div>
+              </Card>
+            ) : (
+              <Alert type="info" title="Status Transparansi & Blockchain">
+                Paspor digital ini diverifikasi di basis data canonical EcoThread. Penjangkaran hash metadata ke jaringan <strong>Polygon Amoy Testnet</strong> dapat dipicu oleh Admin pada panel pengelolaan DPP.
+              </Alert>
+            )}
 
             {/* Product Identity */}
             <Card style={{ marginBottom: '1.5rem' }}>
@@ -146,3 +224,4 @@ export const PublicDppPage: React.FC = () => {
     </div>
   )
 }
+

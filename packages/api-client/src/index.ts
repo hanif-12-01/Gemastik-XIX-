@@ -498,6 +498,36 @@ export class EcoThreadApiClient {
   public async getMitraPayouts() {
     return this.request('/mitra/payouts')
   }
+
+  // Blockchain Anchoring (Roadmap 9 — Polygon Amoy)
+  public async getAdminDppBlockchainAnchor(id: string) {
+    return this.request(`/admin/dpp/${id}/blockchain-anchor`)
+  }
+
+  public async anchorDppOnAmoy(id: string, versionNum?: number) {
+    return this.request(`/admin/dpp/${id}/anchor-amoy`, {
+      method: 'POST',
+      body: JSON.stringify({ versionNum })
+    })
+  }
+
+  public async reconcileDppAnchor(id: string) {
+    return this.request(`/admin/dpp/${id}/blockchain-anchor/reconcile`, {
+      method: 'POST'
+    })
+  }
+
+  public async retryDppAnchor(id: string, versionNum?: number) {
+    return this.request(`/admin/dpp/${id}/blockchain-anchor/retry`, {
+      method: 'POST',
+      body: JSON.stringify({ versionNum })
+    })
+  }
+
+  public async getPublicDppBlockchainVerification(productCode: string) {
+    return this.request(`/public/dpp/${productCode}/blockchain-verification`)
+  }
 }
 
 export const api = new EcoThreadApiClient()
+

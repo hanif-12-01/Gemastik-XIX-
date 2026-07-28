@@ -61,6 +61,75 @@ export const AdminProductDetailPage: React.FC = () => {
   const cfg = statusConfig[product.status] || { label: product.status, color: 'info' }
   const latestDppVersion = product.dppRecord?.dppVersions?.[0]
 
+  // Roadmap 9: Polygon Amoy Anchoring State
+  const [anchorData, setAnchorData] = useState<any>(null)
+  const [loadingAnchor, setLoadingAnchor] = useState(false)
+  const [anchoring, setAnchoring] = useState(false)
+
+  async function loadAnchorData() {
+    if (!product?.dppRecord?.id) return
+    try {
+      setLoadingAnchor(true)
+      const res = await apiClient.getAdminDppBlockchainAnchor(product.dppRecord.id)
+      setAnchorData(res.data)
+    } catch (_) {
+      // Ignored if anchor endpoint not available
+    } finally {
+      setLoadingAnchor(false)
+    }
+  }
+
+  useEffect(() => {
+    if (product?.dppRecord?.id) {
+      loadAnchorData()
+    }
+  }, [product?.dppRecord?.id])
+
+  async function handleAnchorAmoy() {
+    if (!product?.dppRecord?.id) return
+    try {
+      setAnchoring(true); setActionError(null)
+      const res = await apiClient.anchorDppOnAmoy(product.dppRecord.id)
+      setSuccess(res.message || 'Transaksi anchoring ke Polygon Amoy berhasil dikirim!')
+      await load()
+      await loadAnchorData()
+    } catch (e: any) {
+      setActionError(e.message || 'Gagal melakukan anchoring ke Polygon Amoy')
+    } finally {
+      setAnchoring(false)
+    }
+  }
+
+  async function handleReconcile() {
+    if (!product?.dppRecord?.id) return
+    try {
+      setAnchoring(true); setActionError(null)
+      const res = await apiClient.reconcileDppAnchor(product.dppRecord.id)
+      setSuccess(res.message || 'Status rekonsiliasi diperbarui!')
+      await load()
+      await loadAnchorData()
+    } catch (e: any) {
+      setActionError(e.message || 'Gagal me-rekonsiliasi transaksi')
+    } finally {
+      setAnchoring(false)
+    }
+  }
+
+  async function handleRetry() {
+    if (!product?.dppRecord?.id) return
+    try {
+      setAnchoring(true); setActionError(null)
+      const res = await apiClient.retryDppAnchor(product.dppRecord.id)
+      setSuccess(res.message || 'Ulangi pengiriman transaksi berhasil!')
+      await load()
+      await loadAnchorData()
+    } catch (e: any) {
+      setActionError(e.message || 'Gagal mengulangi pengiriman transaksi')
+    } finally {
+      setAnchoring(false)
+    }
+  }
+
   return (
     <div style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
@@ -119,8 +188,8 @@ export const AdminProductDetailPage: React.FC = () => {
                 <div><span style={{ color: 'var(--color-text-muted)' }}>Versi Terbaru</span><br /><strong style={{ color: '#FFF' }}>v{latestDppVersion?.versionNum || '-'}</strong></div>
               </div>
               {latestDppVersion?.metadataHash && (
-                <div style={{ background: 'var(--color-surface-2)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-dim)' }}>
-                  SHA-256: {latestDppVersion.metadataHash}
+                <div style={{ background: 'var(--color-surface-2)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-dim)', wordBreak: 'break-all' }}>
+                  Keccak-256: {latestDppVersion.metadataHash}
                 </div>
               )}
               <div style={{ marginTop: '1rem' }}>
@@ -157,15 +226,104 @@ export const AdminProductDetailPage: React.FC = () => {
               </div>
             ) : (
               <div>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>DPP belum dibuat. Klik untuk membuat DPP dengan metadata SHA-256.</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>DPP belum dibuat. Klik untuk membuat DPP dengan metadata Keccak-256.</p>
                 <button onClick={publishDpp} disabled={publishingDpp} className="btn btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                   <Shield size={16} />{publishingDpp ? 'Membuat DPP...' : 'Buat & Publikasikan DPP'}
                 </button>
               </div>
             )}
           </Card>
+
+          {/* Roadmap 9: Polygon Amoy Testnet Anchoring Control Panel */}
+          {product.dppRecord && (
+            <Card style={{ padding: '1.25rem' }}>
+              <h3 style={{ color: '#FFF', margin: '0 0 0.75rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Shield size={18} style={{ color: 'var(--color-primary)' }} />
+                Polygon Amoy Anchoring
+              </h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: '1rem' }}>
+                Anchoring komitmen hash metadata DPP ke Polygon Amoy Testnet (Chain ID 80002).
+              </p>
+
+              {anchorData?.anchor ? (
+                <div style={{ background: 'var(--color-surface-2)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.75rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)' }}>Status: </span>
+                    <strong style={{ color: anchorData.anchor.status === 'verified' ? 'var(--color-success)' : anchorData.anchor.status === 'failed' ? 'var(--color-danger)' : 'var(--color-warning)' }}>
+                      {anchorData.anchor.status.toUpperCase()}
+                    </strong>
+                  </div>
+
+                  {anchorData.anchor.transactionHash && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Tx Hash: </span>
+                      <a href={anchorData.anchor.explorerTransactionUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', wordBreak: 'break-all' }}>
+                        {anchorData.anchor.transactionHash.substring(0, 18)}...
+                      </a>
+                    </div>
+                  )}
+
+                  {anchorData.anchor.contractAddress && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Contract: </span>
+                      <span style={{ color: '#FFF', fontFamily: 'monospace' }}>{anchorData.anchor.contractAddress.substring(0, 14)}...</span>
+                    </div>
+                  )}
+
+                  {anchorData.anchor.blockNumber && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Block: </span>
+                      <span style={{ color: '#FFF' }}>#{anchorData.anchor.blockNumber}</span>
+                    </div>
+                  )}
+
+                  {anchorData.anchor.failureMessage && (
+                    <div style={{ color: 'var(--color-danger)', fontSize: '0.7rem' }}>
+                      Pesan Gagal: {anchorData.anchor.failureMessage}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ background: 'var(--color-surface-2)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.75rem', marginBottom: '1rem', color: 'var(--color-text-muted)' }}>
+                  Belum ada rekam pengiriman ke Polygon Amoy untuk versi DPP ini.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <button
+                  onClick={handleAnchorAmoy}
+                  disabled={anchoring || anchorData?.anchor?.status === 'verified'}
+                  className="btn btn-primary"
+                  style={{ width: '100%', fontSize: '0.8rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                >
+                  {anchoring ? 'Mengirim ke Amoy...' : 'Anchor ke Polygon Amoy'}
+                </button>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button
+                    onClick={handleReconcile}
+                    disabled={anchoring || !anchorData?.anchor}
+                    className="btn"
+                    style={{ background: 'var(--color-surface-2)', color: '#FFF', border: '1px solid var(--color-border)', fontSize: '0.75rem', padding: '0.4rem' }}
+                  >
+                    Rekonsiliasi
+                  </button>
+
+                  <button
+                    onClick={handleRetry}
+                    disabled={anchoring || anchorData?.anchor?.status === 'verified'}
+                    className="btn"
+                    style={{ background: 'var(--color-surface-2)', color: 'var(--color-warning)', border: '1px solid var(--color-border)', fontSize: '0.75rem', padding: '0.4rem' }}
+                  >
+                    Ulangi
+                  </button>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>
   )
 }
+

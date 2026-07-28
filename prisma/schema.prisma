@@ -107,6 +107,7 @@ model User {
   mitraPayouts   Payout[]     @relation("MitraPayouts")
   adminPaidPayouts Payout[]   @relation("AdminPayoutPaid")
   dppVersionsCreated DppVersion[] @relation("DppVersionCreator")
+  dppAnchorsCreated  DppBlockchainAnchor[] @relation("DppAnchorCreator")
 
   @@map("users")
 }
@@ -485,8 +486,9 @@ model DppRecord {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
-  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  dppVersions DppVersion[]
+  product            Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  dppVersions        DppVersion[]
+  blockchainAnchors  DppBlockchainAnchor[]
 
   @@map("dpp_records")
 }
@@ -501,10 +503,47 @@ model DppVersion {
   createdByUserId   String?
   createdAt         DateTime @default(now())
 
-  dppRecord     DppRecord @relation(fields: [dppRecordId], references: [id], onDelete: Cascade)
-  createdByUser User?     @relation("DppVersionCreator", fields: [createdByUserId], references: [id])
+  dppRecord         DppRecord             @relation(fields: [dppRecordId], references: [id], onDelete: Cascade)
+  createdByUser     User?                 @relation("DppVersionCreator", fields: [createdByUserId], references: [id])
+  blockchainAnchors DppBlockchainAnchor[]
 
   @@map("dpp_versions")
+}
+
+model DppBlockchainAnchor {
+  id                      String   @id @default(uuid())
+  dppRecordId             String
+  dppVersionId            String
+  network                 String   @default("polygon_amoy")
+  chainId                 Int      @default(80002)
+  contractAddress         String
+  dppKey                  String
+  versionNum              Int
+  metadataHash            String
+  canonicalizationVersion String   @default("ecothread-dpp-c14n-v1")
+  status                  String   @default("pending") // pending, submitting, transaction_submitted, confirmed, verified, failed
+  transactionHash         String?
+  blockNumber             Int?
+  blockHash               String?
+  blockTimestamp          DateTime?
+  issuerAddress           String?
+  submittedAt             DateTime?
+  confirmedAt             DateTime?
+  lastCheckedAt           DateTime?
+  retryCount              Int      @default(0)
+  failureCode             String?
+  failureMessage          String?
+  createdByUserId         String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  dppRecord     DppRecord  @relation(fields: [dppRecordId], references: [id], onDelete: Cascade)
+  dppVersion    DppVersion @relation(fields: [dppVersionId], references: [id], onDelete: Cascade)
+  createdByUser User?      @relation("DppAnchorCreator", fields: [createdByUserId], references: [id])
+
+  @@unique([dppVersionId, network])
+  @@unique([chainId, contractAddress, dppKey, versionNum])
+  @@map("dpp_blockchain_anchors")
 }
 
 model ImpactRecord {
