@@ -60,6 +60,34 @@ declare module 'fastify' {
 }
 
 // -------------------------------------------------------
+// Database environment aliases
+// Supports current and legacy Vercel Postgres integrations.
+// -------------------------------------------------------
+function resolveDatabaseEnvironment(): void {
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.PRISMA_DATABASE_URL
+
+  const directUrl =
+    process.env.DIRECT_URL ||
+    process.env.DATABASE_URL_UNPOOLED ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    databaseUrl
+
+  if (!process.env.DATABASE_URL && databaseUrl) {
+    process.env.DATABASE_URL = databaseUrl
+  }
+
+  if (!process.env.DIRECT_URL && directUrl) {
+    process.env.DIRECT_URL = directUrl
+  }
+}
+
+resolveDatabaseEnvironment()
+
+// -------------------------------------------------------
 // Shared PrismaClient singleton
 // Instantiated once per process / cold start.
 // -------------------------------------------------------
@@ -240,6 +268,7 @@ export async function buildApp() {
   // Readiness: lightweight DB ping + storage config check
   fastify.get('/api/v1/health/ready', async (_req, reply) => {
     const checks: Record<string, string> = {}
+    checks.database_configured = process.env.DATABASE_URL ? 'yes' : 'no'
     try {
       await prisma.$queryRaw`SELECT 1`
       checks.database = 'ok'

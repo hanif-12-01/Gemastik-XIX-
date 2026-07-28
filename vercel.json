@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm db:generate && pnpm --filter @ecothread/contracts build && pnpm --filter @ecothread/api-client build && pnpm --filter @ecothread/api build && pnpm --filter @ecothread/web build",
+  "buildCommand": "pnpm vercel:build",
   "outputDirectory": "apps/web/dist",
   "regions": [
     "sin1"
