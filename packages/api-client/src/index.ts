@@ -198,6 +198,11 @@ export class EcoThreadApiClient {
     return this.request('/admin/material-sources')
   }
 
+  // Public DPP
+  public async getPublicDpp(productCode: string) {
+    return this.request(`/public/dpp/${productCode}`)
+  }
+
   public async getMaterialSource(id: string) {
     return this.request(`/admin/material-sources/${id}`)
   }

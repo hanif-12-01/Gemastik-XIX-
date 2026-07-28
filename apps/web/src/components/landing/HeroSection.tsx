@@ -48,7 +48,7 @@ export const HeroSection: React.FC = () => {
             lineHeight: 1.6
           }}
         >
-          EcoThread menghubungkan pengelolaan material limbah garmen, kecerdasan buatan, keterampilan mitra penjahit lokal, serta transparansi <strong>Digital Product Passport (DPP)</strong> dalam satu rantai pasok terukur.
+          EcoThread menghubungkan pengelolaan material limbah garmen, validasi pola presisi Human-in-the-Loop, keterampilan mitra penjahit lokal, serta transparansi <strong>Digital Product Passport (DPP)</strong> dengan penjangkaran Polygon Amoy dalam satu rantai pasok terukur.
         </p>
 
         {/* Primary Action Buttons */}

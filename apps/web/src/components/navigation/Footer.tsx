@@ -22,7 +22,7 @@ export const Footer: React.FC = () => {
           <div>
             <h3 style={{ fontSize: '1.25rem', color: '#FFF', marginBottom: '0.5rem' }}>EcoThread</h3>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: '320px' }}>
-              Platform manufaktur fashion sirkular terdesentralisasi berbasis Digital Product Passport (DPP).
+              Platform manufaktur fashion sirkular database-first dengan penjangkaran integritas Digital Product Passport (DPP) pada Polygon Amoy.
             </p>
           </div>
 

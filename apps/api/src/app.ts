@@ -158,9 +158,9 @@ export async function buildApp() {
   const JWT_SECRET = process.env.JWT_SECRET || 'ecothread-dev-secret-key-31072026'
   const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h'
   const DPP_PUBLIC_BASE_URL =
-    process.env.WEB_APP_URL ||
     process.env.DPP_PUBLIC_BASE_URL ||
-    'http://localhost:3000'
+    process.env.WEB_APP_URL ||
+    'https://ecothread.vercel.app'
 
   const CORS_ORIGINS = (
     process.env.CORS_ORIGINS ||

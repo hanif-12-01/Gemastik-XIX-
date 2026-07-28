@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Alert } from '../../components/feedback/Alert'
 import { LoadingSpinner } from '../../components/feedback/LoadingSpinner'
 import { apiClient } from '../../lib/api'
+import { env } from '../../lib/env'
 import { Database, ShieldCheck, Link as LinkIcon, QrCode } from 'lucide-react'
 
 export const PublicDppPage: React.FC = () => {
@@ -19,18 +20,31 @@ export const PublicDppPage: React.FC = () => {
     async function fetchDpp() {
       try {
         setLoading(true)
-        const [dppRes, chainRes] = await Promise.allSettled([
-          apiClient.getDpp(code),
-          apiClient.getPublicDppBlockchainVerification(code)
-        ])
+        const baseUrl = env.apiBaseUrl
 
-        if (dppRes.status === 'fulfilled' && dppRes.value) {
-          setDppData(dppRes.value)
+        // Fetch Blockchain verification data
+        try {
+          const res = await fetch(`/api/v1/public/dpp/${code}/blockchain-verification`).catch(() =>
+            fetch(`${baseUrl}/public/dpp/${code}/blockchain-verification`)
+          )
+          if (res.ok) {
+            const json = await res.json()
+            setBlockchainData(json.data || json)
+          }
+        } catch (e) {
+          console.warn('Blockchain verification fetch error:', e)
         }
 
-        if (chainRes.status === 'fulfilled' && chainRes.value) {
-          setBlockchainData(chainRes.value)
-        }
+        // Fetch DPP data
+        try {
+          const dppRes = await fetch(`/api/v1/public/dpp/${code}`).catch(() =>
+            fetch(`${baseUrl}/public/dpp/${code}`)
+          )
+          if (dppRes.ok) {
+            const json = await dppRes.json()
+            setDppData(json.data || json)
+          }
+        } catch (_) {}
       } catch (_) {
         // Fallback to verified canonical demo state
       } finally {

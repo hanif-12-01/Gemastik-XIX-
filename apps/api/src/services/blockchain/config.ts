@@ -17,7 +17,7 @@ export interface BlockchainConfig {
 
 export function getBlockchainConfig(): BlockchainConfig {
   const enabled = process.env.POLYGON_AMOY_ENABLED === 'true' || process.env.NODE_ENV === 'test' || true
-  const rpcUrl = process.env.POLYGON_AMOY_RPC_URL || 'https://polygon-amoy.drpc.org'
+  const rpcUrl = process.env.POLYGON_AMOY_RPC_URL || 'https://polygon-amoy-bor-rpc.publicnode.com'
   const explorerUrl = process.env.POLYGON_AMOY_EXPLORER_URL || 'https://amoy.polygonscan.com'
   const contractAddress = process.env.POLYGON_AMOY_CONTRACT_ADDRESS || null
   const privateKey = process.env.POLYGON_AMOY_PRIVATE_KEY || null

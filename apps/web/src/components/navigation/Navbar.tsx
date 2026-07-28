@@ -1,14 +1,16 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ROUTES } from '../../lib/routes'
 import { Badge } from '../ui/Badge'
+import { Menu, X, ArrowRight } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
   const location = useLocation()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <header style={{
-      backgroundColor: 'rgba(11, 15, 23, 0.85)',
+      backgroundColor: 'rgba(11, 15, 23, 0.92)',
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid var(--color-border)',
       position: 'sticky',
@@ -46,7 +48,8 @@ export const Navbar: React.FC = () => {
           </div>
         </Link>
 
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        {/* Desktop Nav */}
+        <nav className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <Link
             to={ROUTES.PUBLIC.LANDING}
             style={{
@@ -76,13 +79,60 @@ export const Navbar: React.FC = () => {
           </Link>
         </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Badge variant="success">GEMASTIK XIX MVP</Badge>
           <Link to={ROUTES.PUBLIC.PORTAL} className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
             Masuk Portal
           </Link>
         </div>
+
+        {/* Mobile Hamburger Toggle */}
+        <button
+          className="mobile-only"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          style={{ background: 'none', border: 'none', color: '#FFF', padding: '0.5rem', cursor: 'pointer', minHeight: '44px', minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? <X size={26} /> : <Menu size={26} />}
+        </button>
       </div>
+
+      {/* Mobile Drawer Navigation */}
+      {mobileOpen && (
+        <div
+          className="mobile-only"
+          style={{
+            backgroundColor: '#0F172A',
+            borderBottom: '1px solid var(--color-border)',
+            padding: '1.25rem 1rem 1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}
+        >
+          <Link
+            to={ROUTES.PUBLIC.LANDING}
+            onClick={() => setMobileOpen(false)}
+            style={{ color: '#FFF', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 0' }}
+          >
+            Beranda
+          </Link>
+          <Link
+            to={ROUTES.PUBLIC.CATALOG}
+            onClick={() => setMobileOpen(false)}
+            style={{ color: '#FFF', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 0' }}
+          >
+            Katalog Produk Upcycled
+          </Link>
+          <Link
+            to={ROUTES.PUBLIC.PORTAL}
+            onClick={() => setMobileOpen(false)}
+            style={{ color: 'var(--color-primary)', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            Pilih Portal Masuk <ArrowRight size={18} />
+          </Link>
+        </div>
+      )}
     </header>
   )
 }

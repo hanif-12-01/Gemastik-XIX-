@@ -438,7 +438,7 @@ export async function main() {
     where: { dataOrigin: DataOrigin.demo }
   })
 
-  const dppBaseUrl = (process.env.DPP_PUBLIC_BASE_URL || process.env.DPP_BASE_URL || process.env.VITE_DPP_BASE_URL || 'http://localhost:5175').replace(/\/$/, '')
+  const dppBaseUrl = (process.env.DPP_PUBLIC_BASE_URL || process.env.WEB_APP_URL || process.env.DPP_BASE_URL || 'https://ecothread.vercel.app').replace(/\/$/, '')
   const productCode = 'PRD-2026-0001'
 
   const product = await prisma.product.upsert({
