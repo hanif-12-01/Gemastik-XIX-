@@ -2,6 +2,7 @@
   "name": "ecothread-monorepo",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.33.2",
   "scripts": {
     "dev": "pnpm --parallel --filter @ecothread/api --filter @ecothread/web run dev",
     "dev:legacy": "pnpm --parallel --filter @ecothread/admin --filter @ecothread/mitra --filter @ecothread/user --filter @ecothread/explainer run dev",

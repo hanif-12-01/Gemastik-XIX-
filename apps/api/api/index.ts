@@ -27,6 +27,36 @@ export default async function handler(
   req: IncomingMessage,
   res: ServerResponse
 ) {
-  const app = await getApp()
-  app.server.emit('request', req, res)
+  try {
+    const app = await getApp()
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false
+
+      const finish = () => {
+        if (settled) return
+        settled = true
+        resolve()
+      }
+
+      res.once('finish', finish)
+      res.once('close', finish)
+      res.once('error', reject)
+      app.server.emit('request', req, res)
+    })
+  } catch (error) {
+    console.error('EcoThread API function failed:', error)
+
+    if (!res.headersSent) {
+      res.statusCode = 500
+      res.setHeader('content-type', 'application/json; charset=utf-8')
+    }
+
+    if (!res.writableEnded) {
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Layanan EcoThread sedang mengalami gangguan.'
+      }))
+    }
+  }
 }
