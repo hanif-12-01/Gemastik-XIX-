@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv'
 
 dotenv.config({ path: '../../.env' })
 
-const AMOY_RPC_URL = process.env.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology'
+const AMOY_RPC_URL = process.env.POLYGON_AMOY_RPC_URL || 'https://polygon-amoy.drpc.org'
 const AMOY_PRIVATE_KEY = process.env.POLYGON_AMOY_PRIVATE_KEY || '0x0000000000000000000000000000000000000000000000000000000000000001'
 
 const config: HardhatUserConfig = {

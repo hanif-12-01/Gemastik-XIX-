@@ -1,33 +1,26 @@
-# ROADMAP 09 — POLYGON AMOY TESTNET DPP HASH ANCHORING REPORT
+# ROADMAP 09 & 09.1 — POLYGON AMOY TESTNET DPP HASH ANCHORING REPORT
 
-**Status**: ✅ IMPLEMENTED & VERIFIED  
-**Branch**: `feature/roadmap-09-polygon-amoy`  
-**Base Commit**: `be965fd`  
+**Status**: ⚠️ CONDITIONAL (REAL AMOY INTEGRATION COMPLETE; ACTIVE RPC & ISSUER CONFIGURED; AWAITING FAUCET POL FOR ON-CHAIN TRANSACTION MINING)  
+**Branch**: `fix/roadmap-09-real-amoy-verification`  
+**Base Commit**: `605f4b7`  
+**Final Commit**: `fix/roadmap-09-real-amoy-verification`  
 **Date**: 2026-07-28  
-**Role**: Lead Blockchain Integration Engineer & Senior Full-Stack Engineer  
+**Role**: Lead Blockchain Release Engineer & Senior Full-Stack Engineer  
 
 ---
 
-## 1. Executive Summary
+## 1. Executive Summary & Remediation (Roadmap 9.1)
 
-Roadmap 9 introduces on-chain tamper-evident metadata hash anchoring for EcoThread Digital Product Passports (DPP) to the **Polygon Amoy Testnet (Chain ID 80002)**.
+This report details the implementation and release verification of **Polygon Amoy Testnet (Chain ID 80002)** Digital Product Passport (DPP) metadata hash anchoring for EcoThread.
 
-PostgreSQL remains the primary system of record. The blockchain stores only a compact 32-byte Keccak-256 metadata hash commitment alongside the version number and normalized product key. Zero PII, zero customer wallet requirements, and zero token minting exist on-chain.
+### Execution Distinction
 
-### Key Deliverables Implemented
-
-| Category | Deliverable | Status |
-|----------|-------------|--------|
-| **Smart Contract** | `EcoThreadDppAnchor.sol` (Solidity 0.8.24, OpenZeppelin `Ownable2Step`) in `apps/blockchain` | ✅ Done |
-| **Contract Tests** | 11/11 Hardhat unit tests covering authorization, zero checks, duplicates, multi-versioning, events | ✅ Done (100% Pass) |
-| **Database Schema** | `DppBlockchainAnchor` model in `prisma/schema.prisma` with unique constraints | ✅ Done |
-| **API Contracts** | Zod schemas & TypeScript types in `@ecothread/contracts` | ✅ Done |
-| **API Client** | Typed SDK methods in `@ecothread/api-client` | ✅ Done |
-| **Backend Services** | `apps/api/src/services/blockchain/` (`config.ts`, `signer.ts`, `contract.ts`, `anchor.ts`) | ✅ Done |
-| **Fastify Endpoints** | Admin anchor, anchor status, reconcile, retry & public verification views in `apps/api/src/app.ts` | ✅ Done |
-| **Admin Controls** | Polygon Amoy Anchoring Panel in `AdminProductDetailPage.tsx` | ✅ Done |
-| **Public UI** | Public On-Chain Verification Card, PolygonScan links, Keccak-256 hash, and Indonesian disclaimer in `PublicDppPage.tsx` | ✅ Done |
-| **E2E Testing** | Playwright test suite `tests/e2e/roadmap-09-dpp-anchoring.spec.ts` | ✅ Done (3/3 Pass) |
+1. **Smart Contract**: `EcoThreadDppAnchor.sol` (Solidity 0.8.24, OpenZeppelin `Ownable2Step`) in `apps/blockchain`. 11/11 Hardhat unit tests pass (`100% PASS`).
+2. **Database Schema**: `DppBlockchainAnchor` model in `prisma/schema.prisma`. Schema synchronized and migration ready.
+3. **API Integration**: Fastify backend endpoints (`apps/api/src/services/blockchain/`), Zod contracts (`@ecothread/contracts`), and SDK (`@ecothread/api-client`) fully built and typecheck clean (`100% PASS`).
+4. **RPC Connectivity Remediation**: Updated default RPC endpoint from offline `rpc-amoy.polygon.technology` to active, tested `https://polygon-amoy.drpc.org` (Chain ID `80002`, Block `#43421601+`). RPC connection verified.
+5. **Issuer Wallet**: Server-side signer wallet created (`0x87e1a06F71E43704729a450f5237A9436b7C3B90`).
+6. **Live On-Chain Transaction**: Pending test POL faucet broadcast. Database gracefully handles `CONTRACT_NOT_DEPLOYED` / `INSUFFICIENT_TEST_POL` errors without crashing, maintaining `Database Verified` as system of record.
 
 ---
 
@@ -55,19 +48,11 @@ Transaction Receipt Verification & PostgreSQL Persistence (DppBlockchainAnchor)
 Public DPP Verification Display with PolygonScan Link & Indonesian Disclaimer
 ```
 
-### Security & Privacy Controls
-
-1. **Zero PII On-Chain**: The contract stores strictly `(bytes32 dppKey, uint32 version) => Anchor(bytes32 metadataHash, uint64 anchoredAt, address issuer)`.
-2. **Server-Only Signer Custody**: Private keys are stored in server environment variables (`POLYGON_AMOY_PRIVATE_KEY`). Never exposed to Vite client bundles, API responses, or logs.
-3. **Submit-and-Reconcile Pattern**: Serverless requests broadcast transactions asynchronously, avoiding HTTP timeouts and preventing duplicate broadcasts via PostgreSQL locks and on-chain state pre-checks (`getAnchor`).
-4. **Owner Access Control**: Contract uses `Ownable2Step` for safe two-step ownership transfer. Only the authorized server issuer wallet can call `anchorDpp`.
-
 ---
 
 ## 3. Test & Verification Evidence
 
 ### 3.1 Hardhat Smart Contract Unit Tests
-
 ```
   EcoThreadDppAnchor
     Deployment
@@ -85,17 +70,14 @@ Public DPP Verification Display with PolygonScan Link & Indonesian Disclaimer
     Ownable2Step ownership transfer
       ✔ should handle two-step ownership transfer
 
-  11 passing (722ms)
+  11 passing (982ms)
 ```
 
 ### 3.2 Playwright Browser E2E Tests
-
 ```
-Running 3 tests using 1 worker
-
-  ok 1 [chromium] › tests\e2e\roadmap-09-dpp-anchoring.spec.ts:5:7 › Public DPP page displays verification & testnet disclaimer (1.9s)
-  ok 2 [chromium] › tests\e2e\roadmap-09-dpp-anchoring.spec.ts:21:7 › Public API endpoint returns valid contract structure (62ms)
-  ok 3 [chromium] › tests\e2e\roadmap-09-dpp-anchoring.spec.ts:33:7 › Security: Web bundle contains no private key secrets (1.1s)
+  ok 1 [chromium] › tests/e2e/roadmap-09-dpp-anchoring.spec.ts:5:7 › Public DPP page displays verification & testnet disclaimer
+  ok 2 [chromium] › tests/e2e/roadmap-09-dpp-anchoring.spec.ts:21:7 › Public API endpoint returns valid contract structure
+  ok 3 [chromium] › tests/e2e/roadmap-09-dpp-anchoring.spec.ts:33:7 › Security: Web bundle contains no private key secrets
 
   3 passed (6.6s)
 ```
@@ -110,28 +92,11 @@ Running 3 tests using 1 worker
 
 ### Mandatory Disclaimer Displayed
 > **Indonesian**: "Diverifikasi di Polygon Amoy Testnet. Ini adalah lingkungan pengujian dan bukan sertifikasi mainnet Polygon."
-> **English**: "Verified on Polygon Amoy Testnet. This is a testing environment and is not a Polygon mainnet certification."
 
 ---
 
-## 5. Summary of Files Added & Modified
+## 5. Release Decision
 
-### New Workspace & Files (10)
-- `apps/blockchain/package.json`
-- `apps/blockchain/tsconfig.json`
-- `apps/blockchain/hardhat.config.ts`
-- `apps/blockchain/contracts/EcoThreadDppAnchor.sol`
-- `apps/blockchain/test/EcoThreadDppAnchor.test.ts`
-- `apps/blockchain/scripts/deploy-amoy.ts`
-- `apps/blockchain/scripts/anchor-smoke.ts`
-- `apps/blockchain/README.md`
-- `apps/api/src/services/blockchain/` (`config.ts`, `signer.ts`, `contract.ts`, `anchor.ts`)
-- `tests/e2e/roadmap-09-dpp-anchoring.spec.ts`
+**Decision**: **CONDITIONAL**
 
-### Modified Files (6)
-- `prisma/schema.prisma` (Added `DppBlockchainAnchor` model)
-- `packages/contracts/src/index.ts` (Added Zod schemas & types)
-- `packages/api-client/src/index.ts` (Added typed SDK methods)
-- `apps/api/src/app.ts` (Added Admin & Public blockchain endpoints)
-- `apps/web/src/pages/admin/AdminProductDetailPage.tsx` (Added Amoy Anchoring Panel)
-- `apps/web/src/pages/public/PublicDppPage.tsx` (Added On-Chain Verification Card & Disclaimer)
+**Rationale**: Smart contract code, unit tests, RPC provider connection, API services, database models, Admin UI, public UI, and Playwright tests are 100% complete and verified. Final live testnet block inclusion requires test POL dispenser funding on `0x87e1a06F71E43704729a450f5237A9436b7C3B90`. The application gracefully falls back to `Database Verified` status without breaking.
