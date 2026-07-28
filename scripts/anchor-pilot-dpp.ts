@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../apps/api/generated/client'
 import { anchorDppVersionOnAmoy } from '../apps/api/src/services/blockchain/anchor'
 import { getBlockchainConfig } from '../apps/api/src/services/blockchain/config'
 

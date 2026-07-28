@@ -1,4 +1,4 @@
-import { PrismaClient, Role, ProductionOrderStatus, MitraVerificationStatus } from '@prisma/client'
+import { PrismaClient, Role, ProductionOrderStatus, MitraVerificationStatus } from '../generated/client'
 
 const prisma = new PrismaClient()
 

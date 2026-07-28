@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../apps/api/generated/client'
 import { getPublicBlockchainVerificationView } from '../apps/api/src/services/blockchain/anchor'
 
 const prisma = new PrismaClient()

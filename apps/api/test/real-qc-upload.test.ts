@@ -2,7 +2,7 @@ import assert from 'assert'
 import fs from 'fs'
 import path from 'path'
 import { EcoThreadApiClient } from '@ecothread/api-client'
-import { PrismaClient, Role } from '@prisma/client'
+import { PrismaClient, Role } from '../generated/client'
 
 const prisma = new PrismaClient()
 const api = new EcoThreadApiClient('http://localhost:4000/api/v1')

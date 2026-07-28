@@ -10,7 +10,7 @@ import {
   DppVerificationState,
   DataOrigin,
   MitraVerificationStatus
-} from '@prisma/client'
+} from '../generated/client'
 import bcrypt from 'bcryptjs'
 import {
   LoginSchema,

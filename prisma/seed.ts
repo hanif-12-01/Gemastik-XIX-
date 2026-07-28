@@ -1,4 +1,4 @@
-import { PrismaClient, Role, DataOrigin, ProductionOrderStatus, PayoutStatus, DppVerificationState } from '@prisma/client'
+import { PrismaClient, Role, DataOrigin, ProductionOrderStatus, PayoutStatus, DppVerificationState } from '../apps/api/generated/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()

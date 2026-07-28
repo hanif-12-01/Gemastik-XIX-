@@ -1,5 +1,5 @@
 import { EcoThreadApiClient } from '@ecothread/api-client'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../generated/client'
 
 const prisma = new PrismaClient()
 const userClient = new EcoThreadApiClient('http://localhost:4000/api/v1')

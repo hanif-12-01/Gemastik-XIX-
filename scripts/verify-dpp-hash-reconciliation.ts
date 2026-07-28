@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../apps/api/generated/client'
 import { deriveDppKey, computeCanonicalKeccak256Hash, ECOTHREAD_DPP_ANCHOR_ABI } from '../apps/api/src/services/blockchain/contract'
 import { getBlockchainConfig } from '../apps/api/src/services/blockchain/config'
 import { ethers } from 'ethers'

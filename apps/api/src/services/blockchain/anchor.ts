@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../../../generated/client'
 import { ethers } from 'ethers'
 import { getBlockchainConfig, buildExplorerTxUrl, buildExplorerContractUrl, CANONICAL_DISCLAIMER_ID, CANONICAL_DISCLAIMER_EN } from './config'
 import { getBlockchainSigner } from './signer'

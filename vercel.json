@@ -10,7 +10,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": "node_modules/.prisma/**"
+      "includeFiles": "apps/api/generated/client/**"
     }
   },
   "routes": [

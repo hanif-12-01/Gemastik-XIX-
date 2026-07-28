@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../apps/api/generated/client'
 import { anchorDppVersionOnAmoy, reconcileDppAnchor } from '../apps/api/src/services/blockchain/anchor'
 import { getBlockchainConfig, buildExplorerTxUrl, buildExplorerContractUrl } from '../apps/api/src/services/blockchain/config'
 import { deriveDppKey, computeCanonicalKeccak256Hash, ECOTHREAD_DPP_ANCHOR_ABI } from '../apps/api/src/services/blockchain/contract'

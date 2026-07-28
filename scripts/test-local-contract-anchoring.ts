@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../apps/api/generated/client'
 import { deriveDppKey, computeCanonicalKeccak256Hash, ECOTHREAD_DPP_ANCHOR_ABI } from '../apps/api/src/services/blockchain/contract'
 
 const prisma = new PrismaClient()

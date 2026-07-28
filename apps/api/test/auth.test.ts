@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
-import { PrismaClient, Role, MitraVerificationStatus } from '@prisma/client'
+import { PrismaClient, Role, MitraVerificationStatus } from '../generated/client'
 
 const prisma = new PrismaClient()
 
