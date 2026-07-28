@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { ArrowRight, Menu, ShoppingBag, X } from 'lucide-react'
 import { ROUTES } from '../../lib/routes'
-import { Badge } from '../ui/Badge'
-import { Menu, X, ArrowRight, ShieldCheck, ChevronRight } from 'lucide-react'
+import '../../styles/navigation.css'
+
+const landingLinks = [
+  { label: 'Model Bisnis', href: '/#model-bisnis' },
+  { label: 'Cara Kerja', href: '/#cara-kerja' },
+  { label: 'Teknologi', href: '/#teknologi' },
+  { label: 'DPP', href: '/#dpp-info' }
+]
 
 export const PublicHeader: React.FC = () => {
   const location = useLocation()
@@ -10,257 +17,75 @@ export const PublicHeader: React.FC = () => {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
-    window.addEventListener('scroll', handleScroll)
+    const handleScroll = () => setScrolled(window.scrollY > 16)
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false)
-  }, [location.pathname])
+  }, [location.pathname, location.hash])
 
   return (
     <>
-      {/* Skip to Main Content Link for Accessibility */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only"
-        style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          zIndex: 9999,
-          padding: '0.75rem 1.25rem',
-          backgroundColor: 'var(--color-primary)',
-          color: '#000',
-          fontWeight: 700,
-          borderRadius: 'var(--radius-md)',
-          textDecoration: 'none'
-        }}
-      >
-        Lompat ke Konten Utama (Skip to Content)
+      <a href="#main-content" className="sr-only focus:not-sr-only public-skip-link">
+        Lompat ke konten utama
       </a>
 
-      <header
-        style={{
-          backgroundColor: scrolled || mobileMenuOpen ? 'rgba(11, 15, 23, 0.95)' : 'rgba(11, 15, 23, 0.8)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid var(--color-border)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-          transition: 'background-color 0.3s ease'
-        }}
-      >
-        <div
-          className="container"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            height: '72px'
-          }}
-        >
-          {/* Logo & Brand Identity */}
-          <Link
-            to={ROUTES.PUBLIC.LANDING}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}
-            aria-label="EcoThread Beranda"
-          >
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                color: '#000',
-                fontSize: '1.25rem',
-                boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)'
-              }}
-            >
-              E
-            </div>
-            <div>
-              <span
-                style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 800,
-                  color: '#FFF',
-                  fontFamily: 'var(--font-family-heading)',
-                  letterSpacing: '-0.02em'
-                }}
-              >
-                EcoThread
-              </span>
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  display: 'block',
-                  color: 'var(--color-primary)',
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase'
-                }}
-              >
-                CIRCULAR FASHION TECH
-              </span>
-            </div>
+      <header className={`public-header ${scrolled ? 'public-header--scrolled' : ''} ${mobileMenuOpen ? 'public-header--open' : ''}`}>
+        <div className="container public-header__inner">
+          <Link to={ROUTES.PUBLIC.LANDING} className="public-brand" aria-label="EcoThread - Beranda">
+            <img src="/ecothread-logo.png" alt="EcoThread Sustainable Fashion Tech" />
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav
-            style={{ display: 'flex', alignItems: 'center', gap: '1.75rem' }}
-            className="desktop-only"
-            aria-label="Navigasi Utama"
-          >
-            <Link
-              to={ROUTES.PUBLIC.LANDING}
-              style={{
-                color: location.pathname === ROUTES.PUBLIC.LANDING ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                fontWeight: location.pathname === ROUTES.PUBLIC.LANDING ? 600 : 500,
-                fontSize: '0.925rem',
-                transition: 'color 0.2s'
-              }}
-            >
-              Beranda
-            </Link>
-            <a
-              href="#cara-kerja"
-              style={{ color: 'var(--color-text-muted)', fontWeight: 500, fontSize: '0.925rem' }}
-            >
-              Cara Kerja
-            </a>
-            <a
-              href="#dpp-info"
-              style={{ color: 'var(--color-text-muted)', fontWeight: 500, fontSize: '0.925rem' }}
-            >
-              Digital Passport
-            </a>
+          <nav className="public-header__nav desktop-only" aria-label="Navigasi publik">
+            {landingLinks.map((item) => (
+              <a key={item.label} href={item.href}>{item.label}</a>
+            ))}
             <Link
               to={ROUTES.PUBLIC.CATALOG}
-              style={{
-                color: location.pathname.startsWith(ROUTES.PUBLIC.CATALOG) ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                fontWeight: location.pathname.startsWith(ROUTES.PUBLIC.CATALOG) ? 600 : 500,
-                fontSize: '0.925rem'
-              }}
+              className={location.pathname.startsWith(ROUTES.PUBLIC.CATALOG) ? 'is-active' : ''}
             >
-              Katalog Produk
+              Koleksi
             </Link>
-            <a
-              href="#tentang-kami"
-              style={{ color: 'var(--color-text-muted)', fontWeight: 500, fontSize: '0.925rem' }}
-            >
-              Tentang Kami
-            </a>
+            <a href="/#mitra">Mitra</a>
           </nav>
 
-          {/* Header Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }} className="desktop-only">
-            <Badge variant="success">GEMASTIK XIX</Badge>
-            <Link
-              to="/account"
-              className="btn"
-              style={{ background: 'var(--color-surface-2)', color: '#FFF', border: '1px solid var(--color-border)', padding: '0.55rem 1rem', fontSize: '0.875rem' }}
-            >
-              Akun Saya
-            </Link>
-            <Link
-              to={ROUTES.PUBLIC.PORTAL}
-              className="btn btn-primary"
-              style={{ padding: '0.55rem 1.25rem', fontSize: '0.875rem', borderRadius: 'var(--radius-md)' }}
-            >
-              Buka Portal <ArrowRight size={16} />
+          <div className="public-header__actions desktop-only">
+            <Link to="/account" className="public-header__login">Masuk</Link>
+            <Link to={ROUTES.PUBLIC.CATALOG} className="public-header__shop">
+              <ShoppingBag size={16} /> Belanja <ArrowRight size={15} />
             </Link>
           </div>
 
-          {/* Mobile Menu Toggle Button */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
             aria-label={mobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
-            className="mobile-only"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#FFF',
-              cursor: 'pointer',
-              padding: '0.5rem',
-              display: 'none'
-            }}
+            aria-expanded={mobileMenuOpen}
+            className="mobile-only public-header__toggle"
           >
-            {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+            {mobileMenuOpen ? <X size={25} /> : <Menu size={25} />}
           </button>
         </div>
 
-        {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div
-            style={{
-              backgroundColor: 'var(--color-bg-card)',
-              borderBottom: '1px solid var(--color-border)',
-              padding: '1.5rem 1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem'
-            }}
-          >
-            <Link
-              to={ROUTES.PUBLIC.LANDING}
-              style={{ color: '#FFF', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 0' }}
-            >
-              Beranda
-            </Link>
-            <a
-              href="#cara-kerja"
-              onClick={() => setMobileMenuOpen(false)}
-              style={{ color: 'var(--color-text-muted)', fontSize: '1rem', padding: '0.5rem 0' }}
-            >
-              Cara Kerja Sirkular
-            </a>
-            <a
-              href="#dpp-info"
-              onClick={() => setMobileMenuOpen(false)}
-              style={{ color: 'var(--color-text-muted)', fontSize: '1rem', padding: '0.5rem 0' }}
-            >
-              Digital Product Passport
-            </a>
-            <Link
-              to={ROUTES.PUBLIC.CATALOG}
-              style={{ color: 'var(--color-text-muted)', fontSize: '1rem', padding: '0.5rem 0' }}
-            >
-              Katalog Produk
-            </Link>
-            <a
-              href="#tentang-kami"
-              onClick={() => setMobileMenuOpen(false)}
-              style={{ color: 'var(--color-text-muted)', fontSize: '1rem', padding: '0.5rem 0' }}
-            >
-              Tim EcoThread
-            </a>
-
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <Link
-                to={ROUTES.AUTH.MITRA_REGISTER}
-                className="btn btn-outline"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                Daftar Sebagai Mitra Penjahit
-              </Link>
-              <Link
-                to={ROUTES.PUBLIC.PORTAL}
-                className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                Pilih Portal Operasional <ChevronRight size={16} />
-              </Link>
+          <nav className="mobile-only public-mobile-menu" aria-label="Navigasi publik seluler">
+            <div className="container public-mobile-menu__inner">
+              {landingLinks.map((item) => (
+                <a key={item.label} href={item.href}>{item.label}</a>
+              ))}
+              <Link to={ROUTES.PUBLIC.CATALOG}>Koleksi Produk</Link>
+              <a href="/#mitra">Mitra EcoThread</a>
+              <div className="public-mobile-menu__actions">
+                <Link to="/account" className="btn btn-secondary">Masuk Akun</Link>
+                <Link to={ROUTES.PUBLIC.CATALOG} className="btn btn-primary">
+                  <ShoppingBag size={17} /> Belanja Koleksi
+                </Link>
+              </div>
             </div>
-          </div>
+          </nav>
         )}
       </header>
     </>

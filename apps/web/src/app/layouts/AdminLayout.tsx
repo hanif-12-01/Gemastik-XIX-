@@ -14,7 +14,6 @@ import {
   X,
   ChevronRight,
   ShieldCheck,
-  Database,
   Truck,
   CreditCard,
   QrCode
@@ -40,9 +39,6 @@ export const AdminLayout: React.FC = () => {
     { label: 'Produk & DPP', path: '/admin/products', icon: QrCode }
   ]
 
-  const disabledItems: Array<{ label: string; icon: any }> = []
-
-
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin'
     return location.pathname.startsWith(path)
@@ -55,7 +51,7 @@ export const AdminLayout: React.FC = () => {
         className="desktop-only"
         style={{
           width: '260px',
-          backgroundColor: '#0F172A',
+          backgroundColor: 'var(--brand-ink)',
           borderRight: '1px solid var(--color-border)',
           display: 'flex',
           flexDirection: 'column',
@@ -66,8 +62,8 @@ export const AdminLayout: React.FC = () => {
       >
         {/* Brand */}
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '36px', height: '36px', borderRadius: '0.5rem', backgroundColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#000' }}>
-            ET
+          <div style={{ width: '62px', height: '42px', borderRadius: '0.55rem', backgroundColor: 'var(--brand-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.2rem' }}>
+            <img src="/ecothread-logo.png" alt="EcoThread" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div>
             <div style={{ color: '#FFF', fontWeight: 700, fontSize: '1.125rem' }}>EcoThread</div>
@@ -97,7 +93,7 @@ export const AdminLayout: React.FC = () => {
                       fontSize: '0.875rem',
                       fontWeight: active ? 600 : 400,
                       color: active ? '#FFF' : 'var(--color-text-muted)',
-                      backgroundColor: active ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                      backgroundColor: active ? 'rgba(107, 196, 153, 0.13)' : 'transparent',
                       borderLeft: active ? '3px solid var(--color-primary)' : '3px solid transparent'
                     }}
                   >
@@ -108,38 +104,10 @@ export const AdminLayout: React.FC = () => {
               )
             })}
           </ul>
-
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-dim)', marginTop: '1.5rem', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>
-            MODUL MENATANG
-          </div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            {disabledItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <li key={item.label}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.55rem 0.85rem',
-                      fontSize: '0.8rem',
-                      color: 'var(--color-text-dim)',
-                      opacity: 0.6,
-                      cursor: 'not-allowed'
-                    }}
-                  >
-                    <Icon size={16} />
-                    {item.label}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
         </nav>
 
         {/* User Footer */}
-        <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+        <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', backgroundColor: 'rgba(255, 244, 228, 0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <div>
               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#FFF' }}>{user?.name || 'Admin'}</div>
@@ -174,7 +142,7 @@ export const AdminLayout: React.FC = () => {
         <header
           style={{
             height: '64px',
-            backgroundColor: '#0F172A',
+            backgroundColor: 'var(--brand-ink)',
             borderBottom: '1px solid var(--color-border)',
             display: 'flex',
             alignItems: 'center',
@@ -220,7 +188,7 @@ export const AdminLayout: React.FC = () => {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: '#0F172A',
+              backgroundColor: 'var(--brand-ink)',
               zIndex: 40,
               padding: '1.5rem',
               overflowY: 'auto'
@@ -241,7 +209,7 @@ export const AdminLayout: React.FC = () => {
                         padding: '0.75rem 1rem',
                         borderRadius: '0.375rem',
                         color: '#FFF',
-                        backgroundColor: isActive(item.path) ? 'rgba(16, 185, 129, 0.15)' : 'transparent'
+                        backgroundColor: isActive(item.path) ? 'rgba(107, 196, 153, 0.13)' : 'transparent'
                       }}
                     >
                       <Icon size={20} />

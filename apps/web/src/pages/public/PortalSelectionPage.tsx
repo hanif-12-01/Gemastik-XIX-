@@ -9,7 +9,7 @@ import { ArrowLeft } from 'lucide-react'
 export const PortalSelectionPage: React.FC = () => {
   return (
     <div style={{ padding: '3.5rem 0 5rem' }}>
-      <div className="container-narrow">
+      <div className="container">
         <div style={{ marginBottom: '1.5rem' }}>
           <Link to={ROUTES.PUBLIC.LANDING} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
             <ArrowLeft size={16} /> Kembali ke Beranda
@@ -24,7 +24,7 @@ export const PortalSelectionPage: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '1.25rem', alignItems: 'stretch' }}>
           {/* Admin Portal */}
           <PortalCard
             role="admin"

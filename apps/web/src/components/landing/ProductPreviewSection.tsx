@@ -25,7 +25,7 @@ export const ProductPreviewSection: React.FC = () => {
           <Card hoverable style={{ overflow: 'hidden', padding: 0 }}>
             <div style={{ height: '260px', overflow: 'hidden', position: 'relative', backgroundColor: '#000' }}>
               <img
-                src="https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80"
+                src="/ecothread-denim-hero.webp"
                 alt="Jaket Denim Upcycle"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />

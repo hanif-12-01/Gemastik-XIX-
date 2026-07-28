@@ -17,6 +17,9 @@ export const AdminProductDetailPage: React.FC = () => {
   const [publishingDpp, setPublishingDpp] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [anchorData, setAnchorData] = useState<any>(null)
+  const [loadingAnchor, setLoadingAnchor] = useState(false)
+  const [anchoring, setAnchoring] = useState(false)
 
   async function load() {
     try {
@@ -49,31 +52,18 @@ export const AdminProductDetailPage: React.FC = () => {
     finally { setPublishingDpp(false) }
   }
 
-  if (loading) return <LoadingSpinner message="Memuat detail produk..." />
-  if (error) return <Alert variant="error" message={error} onRetry={load} />
-  if (!product) return null
-
-  const statusConfig: Record<string, any> = {
-    draft: { label: 'Draft', color: 'warning' },
-    published: { label: 'Dipublikasikan', color: 'success' },
-    archived: { label: 'Diarsipkan', color: 'danger' }
-  }
-  const cfg = statusConfig[product.status] || { label: product.status, color: 'info' }
-  const latestDppVersion = product.dppRecord?.dppVersions?.[0]
-
-  // Roadmap 9: Polygon Amoy Anchoring State
-  const [anchorData, setAnchorData] = useState<any>(null)
-  const [loadingAnchor, setLoadingAnchor] = useState(false)
-  const [anchoring, setAnchoring] = useState(false)
-
   async function loadAnchorData() {
-    if (!product?.dppRecord?.id) return
+    if (!product?.dppRecord?.id) {
+      setAnchorData(null)
+      return
+    }
+
     try {
       setLoadingAnchor(true)
       const res = await apiClient.getAdminDppBlockchainAnchor(product.dppRecord.id)
       setAnchorData(res.data)
-    } catch (_) {
-      // Ignored if anchor endpoint not available
+    } catch {
+      setAnchorData(null)
     } finally {
       setLoadingAnchor(false)
     }
@@ -129,6 +119,18 @@ export const AdminProductDetailPage: React.FC = () => {
       setAnchoring(false)
     }
   }
+
+  if (loading) return <LoadingSpinner message="Memuat detail produk..." />
+  if (error) return <Alert variant="error" message={error} onRetry={load} />
+  if (!product) return null
+
+  const statusConfig: Record<string, any> = {
+    draft: { label: 'Draft', color: 'warning' },
+    published: { label: 'Dipublikasikan', color: 'success' },
+    archived: { label: 'Diarsipkan', color: 'danger' }
+  }
+  const cfg = statusConfig[product.status] || { label: product.status, color: 'info' }
+  const latestDppVersion = product.dppRecord?.dppVersions?.[0]
 
   return (
     <div style={{ padding: '1.5rem' }}>

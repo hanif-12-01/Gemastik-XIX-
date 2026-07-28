@@ -1,27 +1,27 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { apiClient } from '../../lib/api'
-import { Card } from '../../components/ui/Card'
-import { Badge } from '../../components/ui/Badge'
-import { Button } from '../../components/ui/Button'
+import { CheckCircle2, ChevronRight } from 'lucide-react'
 import { Alert } from '../../components/feedback/Alert'
 import { LoadingSpinner } from '../../components/feedback/LoadingSpinner'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { Scissors, ArrowLeft, Eye, CheckCircle, XCircle } from 'lucide-react'
+import { apiClient } from '../../lib/api'
+import { formatRupiah, getMitraStatus } from '../../lib/mitra-ui'
 
 export const MitraOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [acceptingId, setAcceptingId] = useState<string | null>(null)
 
   const fetchOrders = async () => {
     try {
       setLoading(true)
+      setError(null)
       const data = await apiClient.getMitraOrders()
       setOrders(data)
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat pesanan.')
+      setError(err.message || 'Daftar pekerjaan belum bisa dimuat.')
     } finally {
       setLoading(false)
     }
@@ -34,69 +34,92 @@ export const MitraOrdersPage: React.FC = () => {
   const handleAccept = async (id: string) => {
     setActionMessage(null)
     setError(null)
+    setAcceptingId(id)
+
     try {
       await apiClient.acceptOrder(id)
-      setActionMessage('Pesanan produksi berhasil diterima!')
+      setActionMessage('Pekerjaan berhasil diterima. Terima kasih, Ibu!')
       await fetchOrders()
     } catch (err: any) {
-      setError(err.message || 'Gagal menerima pesanan.')
+      setError(err.message || 'Pekerjaan belum berhasil diterima. Silakan coba lagi.')
+    } finally {
+      setAcceptingId(null)
     }
   }
 
   return (
-    <div style={{ padding: '1.5rem 1rem' }}>
-      <div style={{ marginBottom: '1rem' }}>
-        <Link to="/mitra" style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
-          <ArrowLeft size={16} /> Kembali ke Dashboard Mitra
-        </Link>
+    <div className="mitra-page">
+      <div className="mitra-page-header">
+        <h1>Pekerjaan Saya</h1>
+        <p>Pilih satu pekerjaan untuk melihat langkah yang perlu dilakukan.</p>
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.5rem', color: '#FFF', margin: 0 }}>Pesanan Produksi Saya</h1>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-          Daftar alokasi Eco-Kit dan penugasan jahit yang diberikan Admin.
-        </p>
-      </div>
-
-      {error && <Alert type="danger" title="Gagal">{error}</Alert>}
-      {actionMessage && <Alert type="success" title="Sukses">{actionMessage}</Alert>}
+      {error && <Alert type="danger" title="Belum berhasil">{error}</Alert>}
+      {actionMessage && <Alert type="success" title="Berhasil">{actionMessage}</Alert>}
 
       {loading ? (
-        <LoadingSpinner message="Memuat daftar pesanan Anda..." />
+        <LoadingSpinner message="Membuka daftar pekerjaan..." />
       ) : orders.length === 0 ? (
-        <EmptyState title="Belum Ada Pesanan Ditugaskan" description="Saat ini belum ada penugasan Eco-Kit baru untuk bengkel jahit Anda." />
+        <EmptyState
+          title="Belum ada pekerjaan"
+          description="EcoThread akan memberi tahu Ibu saat ada tawaran jahitan baru."
+        />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {orders.map((o) => (
-            <Card key={o.id} style={{ padding: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', color: '#FFF', margin: 0 }}>{o.orderCode}</h3>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', marginTop: '2px' }}>
-                    {o.ecoKit?.name}
+        <div className="mitra-job-list">
+          {orders.map((order) => {
+            const status = getMitraStatus(order.status)
+            const targetDate = order.targetCompletion
+              ? new Date(order.targetCompletion).toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'long'
+                })
+              : 'Belum ditentukan'
+
+            return (
+              <article className="mitra-job-card" key={order.id}>
+                <div className="mitra-job-card__top">
+                  <div>
+                    <h2>{order.ecoKit?.name || 'Pekerjaan jahit EcoThread'}</h2>
+                    <p>Nomor pekerjaan: {order.orderCode}</p>
+                  </div>
+                  <span className={`mitra-status mitra-status--${status.tone}`}>
+                    {status.label}
+                  </span>
+                </div>
+
+                <div className="mitra-money-row">
+                  <div>
+                    <span>Upah yang diterima</span>
+                    <strong>{formatRupiah(order.agreedPayoutRate)}</strong>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span>Selesai sebelum</span>
+                    <strong style={{ fontSize: '0.95rem' }}>{targetDate}</strong>
                   </div>
                 </div>
-                <Badge variant={o.status === 'offered' ? 'warning' : o.status === 'accepted' ? 'info' : 'success'}>
-                  {o.status}
-                </Badge>
-              </div>
 
-              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.5rem 0' }}>
-                Estimasi Payout: <strong style={{ color: '#FFF' }}>Rp {o.agreedPayoutRate?.toLocaleString('id-ID')}</strong>
-              </div>
+                <p style={{ marginBottom: '1rem' }}>{status.help}</p>
 
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                {o.status === 'offered' && (
-                  <Button onClick={() => handleAccept(o.id)} variant="primary" style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem' }}>
-                    <CheckCircle size={14} /> Terima Pesanan
-                  </Button>
-                )}
-                <Link to={`/mitra/orders/${o.id}`} className="btn btn-secondary" style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem', textAlign: 'center' }}>
-                  <Eye size={14} /> Lihat Detail
-                </Link>
-              </div>
-            </Card>
-          ))}
+                <div className={`mitra-job-actions ${order.status !== 'offered' ? 'mitra-job-actions--single' : ''}`}>
+                  {order.status === 'offered' && (
+                    <button
+                      type="button"
+                      onClick={() => handleAccept(order.id)}
+                      className="btn btn-primary"
+                      disabled={acceptingId === order.id}
+                    >
+                      <CheckCircle2 size={18} aria-hidden="true" />
+                      {acceptingId === order.id ? 'Menyimpan...' : 'Saya terima'}
+                    </button>
+                  )}
+                  <Link to={`/mitra/orders/${order.id}`} className="btn btn-secondary">
+                    Lihat langkah
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </Link>
+                </div>
+              </article>
+            )
+          })}
         </div>
       )}
     </div>

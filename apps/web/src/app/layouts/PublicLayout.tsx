@@ -5,7 +5,7 @@ import { PublicFooter } from '../../components/navigation/PublicFooter'
 
 export const PublicLayout: React.FC = () => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className="public-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <PublicHeader />
       <main id="main-content" style={{ flex: 1 }}>
         <Outlet />

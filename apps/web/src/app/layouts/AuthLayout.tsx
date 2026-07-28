@@ -16,13 +16,25 @@ export const AuthLayout: React.FC = () => {
     }}>
       <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
         <Link to={ROUTES.PUBLIC.LANDING} style={{ textDecoration: 'none' }}>
-          <h1 style={{ fontSize: '2rem', color: '#FFF', marginBottom: '0.25rem' }}>EcoThread</h1>
+          <span style={{
+            display: 'inline-flex',
+            padding: '0.45rem 0.8rem',
+            background: 'var(--brand-cream)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: 'var(--shadow-md)'
+          }}>
+            <img
+              src="/ecothread-logo.png"
+              alt="EcoThread"
+              style={{ width: '168px', height: '60px', objectFit: 'contain' }}
+            />
+          </span>
         </Link>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          Platform Manufaktur Fashion Sirkular Terdesentralisasi
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.85rem' }}>
+          Rethink Waste. Redefine Style.
         </p>
         <div style={{ marginTop: '0.5rem' }}>
-          <Badge variant="info">Otentikasi Aman Roadmap 0</Badge>
+          <Badge variant="info">Akses aman berbasis peran</Badge>
         </div>
       </div>
 

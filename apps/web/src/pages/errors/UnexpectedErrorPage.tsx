@@ -9,10 +9,10 @@ export const UnexpectedErrorPage: React.FC = () => {
     <div style={{ padding: '5rem 0', textAlign: 'center' }}>
       <div className="container-narrow">
         <Card>
-          <Badge variant="danger" className="mb-2">500 Server Error</Badge>
+          <Badge variant="danger" className="mb-2">Aplikasi perlu dimuat ulang</Badge>
           <h1 style={{ fontSize: '2.5rem', color: '#FFF', margin: '1rem 0 0.5rem' }}>Terjadi Kesalahan Aplikasi</h1>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '2rem' }}>
-            Terjadi masalah yang tidak terduga pada aplikasi. Silakan coba memuat ulang halaman.
+            Halaman ini belum berhasil ditampilkan. Silakan muat ulang atau kembali ke beranda.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
             <button onClick={() => window.location.reload()} className="btn btn-primary">

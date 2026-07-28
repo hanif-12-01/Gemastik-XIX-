@@ -8,6 +8,7 @@ export async function main() {
 
   // 1. Hash demo password asynchronously once with cost factor 10
   const defaultPasswordHash = await bcrypt.hash('Password123!', 10)
+  const customerDemoPasswordHash = await bcrypt.hash('DemoPelanggan2026!', 10)
 
   // 2. Seed Mandatory Users (Admin, Mitra 1, Mitra 2, Customer User)
   const adminUser = await prisma.user.upsert({
@@ -256,37 +257,34 @@ export async function main() {
   })
 
   const customerUser = await prisma.user.upsert({
-    where: { email: 'user@ecothread.local' },
+    where: { email: 'pelanggan@ecothread.local' },
     update: {
-      name: 'Budi Eco Consumer',
+      name: 'Pelanggan Demo EcoThread',
       role: Role.user,
-      passwordHash: defaultPasswordHash,
+      passwordHash: customerDemoPasswordHash,
       userProfile: {
         upsert: {
           create: {
-            phone: '+628111222333',
-            address: 'Jl. Dago No. 45, Bandung',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
+            phone: '+6281110002026',
+            address: 'Jl. Asia Afrika No. 19, Bandung'
           },
           update: {
-            phone: '+628111222333',
-            address: 'Jl. Dago No. 45, Bandung',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
+            phone: '+6281110002026',
+            address: 'Jl. Asia Afrika No. 19, Bandung'
           }
         }
       }
     },
     create: {
-      email: 'user@ecothread.local',
-      passwordHash: defaultPasswordHash,
+      email: 'pelanggan@ecothread.local',
+      passwordHash: customerDemoPasswordHash,
       role: Role.user,
-      name: 'Budi Eco Consumer',
+      name: 'Pelanggan Demo EcoThread',
       dataOrigin: DataOrigin.demo,
       userProfile: {
         create: {
-          phone: '+628111222333',
-          address: 'Jl. Dago No. 45, Bandung',
-          avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
+          phone: '+6281110002026',
+          address: 'Jl. Asia Afrika No. 19, Bandung'
         }
       }
     }
@@ -296,7 +294,7 @@ export async function main() {
   console.log('   - Admin:    admin@ecothread.local')
   console.log('   - Mitra 1:  mitra@ecothread.local')
   console.log('   - Mitra 2:  mitra2@ecothread.local')
-  console.log('   - User:     user@ecothread.local')
+  console.log('   - Customer: pelanggan@ecothread.local')
 
   // 3. Seed Material Source & Batch
   const source = await prisma.materialSource.upsert({
@@ -443,16 +441,28 @@ export async function main() {
 
   const product = await prisma.product.upsert({
     where: { productCode },
-    update: {},
+    update: {
+      slug: 'upcycled-denim-eco-kimono-jacket',
+      name: 'Upcycled Denim Eco-Kimono Jacket (Special Edition)',
+      shortDescription: 'Jaket denim patchwork edisi terbatas, dibuat oleh Mitra lokal.',
+      description: 'Jaket Kimono eksklusif berbahan denim sisa industri, dibuat oleh mitra penjahit lokal Ibu Ratna.',
+      primaryImageUrl: '/ecothread-denim-hero.webp',
+      afterImageUrl: '/ecothread-denim-hero.webp',
+      status: 'published',
+      isPublishedDpp: true
+    },
     create: {
       productCode,
+      slug: 'upcycled-denim-eco-kimono-jacket',
       productionOrderId: order.id,
       name: 'Upcycled Denim Eco-Kimono Jacket (Special Edition)',
-      description: 'Jaket Kimono eksklusif berbahan 100% denim sisa industri, dibuat oleh mitra penjahit lokal Ibu Ratna.',
+      shortDescription: 'Jaket denim patchwork edisi terbatas, dibuat oleh Mitra lokal.',
+      description: 'Jaket Kimono eksklusif berbahan denim sisa industri, dibuat oleh mitra penjahit lokal Ibu Ratna.',
       size: 'L',
       category: 'Outerwear',
       beforeImageUrl: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=600',
-      afterImageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=600',
+      primaryImageUrl: '/ecothread-denim-hero.webp',
+      afterImageUrl: '/ecothread-denim-hero.webp',
       status: 'published',
       isPublishedDpp: true,
       dataOrigin: DataOrigin.demo,
@@ -486,9 +496,16 @@ export async function main() {
   })
 
   // 8. Seed Catalog Item for Customer Portal
-  await prisma.catalogItem.upsert({
+  const mainCatalogItem = await prisma.catalogItem.upsert({
     where: { slug: 'upcycled-denim-eco-kimono-jacket' },
-    update: {},
+    update: {
+      productId: product.id,
+      title: 'Upcycled Denim Eco-Kimono Jacket',
+      price: 499000.0,
+      depositAmount: 150000.0,
+      stock: 5,
+      isAvailable: true
+    },
     create: {
       slug: 'upcycled-denim-eco-kimono-jacket',
       productId: product.id,
@@ -501,13 +518,177 @@ export async function main() {
     }
   })
 
+  const catalogVariants = [
+    {
+      productCode: 'PRD-2026-0002',
+      slug: 'denim-patchwork-overshirt',
+      name: 'Denim Patchwork Overshirt',
+      shortDescription: 'Overshirt santai dari panel denim reklamasi dengan saku besar.',
+      description: 'Overshirt uniseks dengan konstruksi patchwork sederhana, dibuat dari perpaduan denim sisa berwarna indigo dan biru pudar.',
+      size: 'All Size',
+      category: 'Outerwear',
+      imageUrl: '/products/denim-overshirt.webp',
+      price: 429000.0,
+      depositAmount: 130000.0,
+      stock: 4,
+      weightKg: 1.4
+    },
+    {
+      productCode: 'PRD-2026-0003',
+      slug: 'tas-tote-patchwork-denim',
+      name: 'Tas Tote Patchwork Denim',
+      shortDescription: 'Tas harian kuat dari potongan denim dan aksen flanel reklamasi.',
+      description: 'Tas tote berstruktur dengan pegangan ganda dan jahitan penguat, memanfaatkan potongan denim serta flanel sisa produksi.',
+      size: 'Medium',
+      category: 'Aksesori',
+      imageUrl: '/products/patchwork-tote.webp',
+      price: 279000.0,
+      depositAmount: 85000.0,
+      stock: 8,
+      weightKg: 0.8
+    },
+    {
+      productCode: 'PRD-2026-0004',
+      slug: 'bucket-hat-patchwork-denim',
+      name: 'Bucket Hat Patchwork Denim',
+      shortDescription: 'Topi uniseks dari potongan denim dalam beberapa warna biru.',
+      description: 'Bucket hat ringan dengan panel denim reklamasi dan topstitching rapi, dirancang agar mudah diproduksi oleh Mitra UMKM.',
+      size: 'All Size',
+      category: 'Aksesori',
+      imageUrl: '/products/patchwork-bucket-hat.webp',
+      price: 169000.0,
+      depositAmount: 50000.0,
+      stock: 12,
+      weightKg: 0.35
+    }
+  ]
+
+  for (const variant of catalogVariants) {
+    const variantProduct = await prisma.product.upsert({
+      where: { productCode: variant.productCode },
+      update: {
+        slug: variant.slug,
+        name: variant.name,
+        shortDescription: variant.shortDescription,
+        description: variant.description,
+        size: variant.size,
+        category: variant.category,
+        primaryImageUrl: variant.imageUrl,
+        afterImageUrl: variant.imageUrl,
+        status: 'published',
+        isPublishedDpp: true
+      },
+      create: {
+        productCode: variant.productCode,
+        slug: variant.slug,
+        productionOrderId: order.id,
+        name: variant.name,
+        shortDescription: variant.shortDescription,
+        description: variant.description,
+        size: variant.size,
+        category: variant.category,
+        primaryImageUrl: variant.imageUrl,
+        afterImageUrl: variant.imageUrl,
+        status: 'published',
+        isPublishedDpp: true,
+        publishedAt: new Date(),
+        dataOrigin: DataOrigin.demo,
+        productMaterials: {
+          create: {
+            batchId: batch.id,
+            weightKg: variant.weightKg
+          }
+        },
+        dppRecord: {
+          create: {
+            productCode: variant.productCode,
+            verificationState: DppVerificationState.database_verified,
+            qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${dppBaseUrl}/dpp/${variant.productCode}`,
+            dataOrigin: DataOrigin.demo,
+            dppVersions: {
+              create: {
+                versionNum: 1,
+                payloadJson: JSON.stringify({
+                  productCode: variant.productCode,
+                  productName: variant.name,
+                  materialSource: 'Bank Sampah Tekstil Majalaya',
+                  mitraName: 'Ibu Ratna (Bandung)',
+                  impactMetrics: {}
+                })
+              }
+            }
+          }
+        }
+      }
+    })
+
+    await prisma.catalogItem.upsert({
+      where: { slug: variant.slug },
+      update: {
+        productId: variantProduct.id,
+        title: variant.name,
+        price: variant.price,
+        depositAmount: variant.depositAmount,
+        stock: variant.stock,
+        isAvailable: true
+      },
+      create: {
+        slug: variant.slug,
+        productId: variantProduct.id,
+        title: variant.name,
+        price: variant.price,
+        depositAmount: variant.depositAmount,
+        stock: variant.stock,
+        isAvailable: true,
+        dataOrigin: DataOrigin.demo
+      }
+    })
+  }
+
+  await prisma.customerOrder.upsert({
+    where: { orderCode: 'CORD-DEMO-2026-0001' },
+    update: {
+      userId: customerUser.id,
+      status: 'processing',
+      totalAmount: 499000.0,
+      depositPaid: 150000.0,
+      shippingAddress: 'Jl. Asia Afrika No. 19, Bandung'
+    },
+    create: {
+      orderCode: 'CORD-DEMO-2026-0001',
+      userId: customerUser.id,
+      status: 'processing',
+      totalAmount: 499000.0,
+      depositPaid: 150000.0,
+      shippingAddress: 'Jl. Asia Afrika No. 19, Bandung',
+      dataOrigin: DataOrigin.demo,
+      customerOrderItems: {
+        create: {
+          catalogItemId: mainCatalogItem.id,
+          quantity: 1,
+          unitPrice: 499000.0
+        }
+      },
+      payments: {
+        create: {
+          amount: 150000.0,
+          paymentMethod: 'bank_transfer',
+          isVerified: true,
+          verifiedAt: new Date(),
+          verifiedByUserId: adminUser.id
+        }
+      }
+    }
+  })
+
   console.log('✅ Demo Dataset Seeded Successfully:')
   console.log('   - Material Batch: MAT-2026-0001')
   console.log('   - Pattern:        PAT-2026-0001')
   console.log('   - Eco-Kit:        KIT-2026-0001')
   console.log('   - Order:          ORD-2026-0001')
   console.log('   - Product:        PRD-2026-0001')
-  console.log('   - Catalog Item:   /catalog/upcycled-denim-eco-kimono-jacket')
+  console.log('   - Catalog Items:  4 varied upcycled products')
+  console.log('   - Customer Demo:  pelanggan@ecothread.local / DemoPelanggan2026!')
 }
 
 main()

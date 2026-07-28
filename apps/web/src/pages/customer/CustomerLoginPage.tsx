@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../features/auth/AuthContext'
 import { Card } from '../../components/ui/Card'
 import { Alert } from '../../components/feedback/Alert'
-import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { Mail, Lock, ArrowRight, UserRoundCheck } from 'lucide-react'
 
 export const CustomerLoginPage: React.FC = () => {
   const navigate = useNavigate()
@@ -43,6 +43,27 @@ export const CustomerLoginPage: React.FC = () => {
           {isRegistered && <Alert variant="success" message="Pendaftaran berhasil! Silakan masuk dengan akun Anda." />}
           {error && <Alert variant="error" message={error} />}
 
+          <div style={{ marginBottom: '1.25rem', padding: '1rem', background: 'var(--color-primary-light)', border: '1px solid var(--color-border-active)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.45rem' }}>
+              <UserRoundCheck size={19} color="var(--color-primary)" />
+              <strong style={{ color: '#FFF' }}>Akun demo dewan juri</strong>
+            </div>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+              Berisi contoh pesanan yang sedang diproses.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setEmail('pelanggan@ecothread.local')
+                setPassword('DemoPelanggan2026!')
+              }}
+              style={{ width: '100%', minHeight: '42px', fontSize: '0.82rem' }}
+            >
+              Isi akun demo otomatis
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
               <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>Email *</label>
@@ -68,7 +89,7 @@ export const CustomerLoginPage: React.FC = () => {
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Kata sandi"
                   style={{ width: '100%', padding: '0.65rem 0.65rem 0.65rem 2.25rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: '#FFF', fontSize: '0.875rem', boxSizing: 'border-box' }}
                 />
               </div>

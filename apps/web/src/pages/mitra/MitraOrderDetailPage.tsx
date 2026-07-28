@@ -1,13 +1,28 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { apiClient } from '../../lib/api'
-import { Card } from '../../components/ui/Card'
-import { Badge } from '../../components/ui/Badge'
-import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import React, { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Send,
+  XCircle
+} from 'lucide-react'
 import { Alert } from '../../components/feedback/Alert'
 import { LoadingSpinner } from '../../components/feedback/LoadingSpinner'
-import { ArrowLeft, CheckCircle, XCircle, Upload, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { apiClient } from '../../lib/api'
+import { formatRupiah, getMitraStatus } from '../../lib/mitra-ui'
+
+const workStages = [
+  { label: 'Bahan sudah diperiksa', stepName: 'Bahan diperiksa', percentage: 20 },
+  { label: 'Sedang memotong kain', stepName: 'Pemotongan kain', percentage: 40 },
+  { label: 'Sedang menjahit', stepName: 'Proses jahit', percentage: 70 },
+  { label: 'Sedang merapikan hasil', stepName: 'Finishing', percentage: 90 }
+]
+
+type PhotoKind = 'front' | 'back' | 'detail'
 
 export const MitraOrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -15,38 +30,27 @@ export const MitraOrderDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-
-  // Progress Form
-  const [stepName, setStepName] = useState('Cutting & Sorting')
-  const [percentage, setPercentage] = useState<number>(25)
-  const [progressNotes, setProgressNotes] = useState('')
-  const [progressSubmitting, setProgressSubmitting] = useState(false)
-
-  // Issue Form
-  const [issueType, setIssueType] = useState('material_shortage')
-  const [severity, setSeverity] = useState('medium')
-  const [issueDescription, setIssueDescription] = useState('')
-  const [issueSubmitting, setIssueSubmitting] = useState(false)
-
-  // QC Evidence Form
-  const [frontPhoto, setFrontPhoto] = useState('https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=600')
-  const [backPhoto, setBackPhoto] = useState('https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=600')
-  const [detailPhoto, setDetailPhoto] = useState('https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=600')
-  const [qcNotes, setQcNotes] = useState('Jahitan rapi, sisa benang telah dibersihkan.')
-  const [qcSubmitting, setQcSubmitting] = useState(false)
-
-  // Reject Form
+  const [busyAction, setBusyAction] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
+  const [issueType, setIssueType] = useState('material_shortage')
+  const [issueDescription, setIssueDescription] = useState('')
+  const [frontPhoto, setFrontPhoto] = useState('')
+  const [backPhoto, setBackPhoto] = useState('')
+  const [detailPhoto, setDetailPhoto] = useState('')
+  const [qcNotes, setQcNotes] = useState('')
+  const [uploadingPhoto, setUploadingPhoto] = useState<PhotoKind | null>(null)
 
   const fetchDetail = async () => {
     if (!id) return
+
     try {
       setLoading(true)
+      setError(null)
       const data = await apiClient.getMitraOrderDetail(id)
       setOrder(data)
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat detail pesanan.')
+      setError(err.message || 'Rincian pekerjaan belum bisa dibuka.')
     } finally {
       setLoading(false)
     }
@@ -56,233 +60,404 @@ export const MitraOrderDetailPage: React.FC = () => {
     fetchDetail()
   }, [id])
 
-  const handleAccept = async () => {
+  const runAction = async (
+    actionName: string,
+    action: () => Promise<unknown>,
+    successText: string
+  ) => {
+    setBusyAction(actionName)
     setError(null)
     setSuccessMessage(null)
-    try {
-      await apiClient.acceptOrder(id!)
-      setSuccessMessage('Pesanan produksi berhasil diterima.')
-      await fetchDetail()
-    } catch (err: any) {
-      setError(err.message || 'Gagal menerima pesanan.')
-    }
-  }
 
-  const handleReject = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSuccessMessage(null)
     try {
-      await apiClient.rejectOrder(id!, rejectionReason)
-      setSuccessMessage('Pesanan ditolak.')
-      setShowRejectForm(false)
+      await action()
+      setSuccessMessage(successText)
       await fetchDetail()
     } catch (err: any) {
-      setError(err.message || 'Gagal menolak pesanan.')
-    }
-  }
-
-  const handleProgress = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSuccessMessage(null)
-    try {
-      setProgressSubmitting(true)
-      await apiClient.updateProgress(id!, {
-        stepName,
-        percentage: Number(percentage),
-        notes: progressNotes
-      })
-      setSuccessMessage('Progress produksi berhasil diperbarui!')
-      setProgressNotes('')
-      await fetchDetail()
-    } catch (err: any) {
-      setError(err.message || 'Gagal memperbarui progress.')
+      setError(err.message || 'Belum berhasil disimpan. Silakan coba lagi.')
     } finally {
-      setProgressSubmitting(false)
+      setBusyAction(null)
     }
   }
 
-  const handleReportIssue = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleAccept = () =>
+    runAction(
+      'accept',
+      () => apiClient.acceptOrder(id!),
+      'Pekerjaan berhasil diterima. Terima kasih, Ibu!'
+    )
+
+  const handleReject = async (event: React.FormEvent) => {
+    event.preventDefault()
+    await runAction(
+      'reject',
+      () => apiClient.rejectOrder(id!, rejectionReason),
+      'Jawaban Ibu sudah disimpan. EcoThread akan mencarikan pekerjaan lain.'
+    )
+    setShowRejectForm(false)
+  }
+
+  const handleStage = (stage: typeof workStages[number]) =>
+    runAction(
+      stage.stepName,
+      () =>
+        apiClient.updateProgress(id!, {
+          stepName: stage.stepName,
+          percentage: stage.percentage,
+          notes: stage.label
+        }),
+      `Tahap “${stage.label}” sudah tersimpan.`
+    )
+
+  const handlePhoto = async (
+    kind: PhotoKind,
+    file: File | undefined,
+    saveUrl: (url: string) => void
+  ) => {
+    if (!file) return
+
+    setUploadingPhoto(kind)
     setError(null)
-    setSuccessMessage(null)
+
     try {
-      setIssueSubmitting(true)
-      await apiClient.createProductionIssue(id!, {
-        issueType,
-        severity,
-        description: issueDescription
-      })
-      setSuccessMessage('Kendala produksi berhasil dilaporkan ke Admin.')
-      setIssueDescription('')
-      await fetchDetail()
+      const uploaded = await apiClient.uploadQcPhoto(file)
+      saveUrl(uploaded.url)
     } catch (err: any) {
-      setError(err.message || 'Gagal melaporkan kendala.')
+      setError(err.message || 'Foto belum berhasil diunggah. Pastikan ukurannya di bawah 5 MB.')
     } finally {
-      setIssueSubmitting(false)
+      setUploadingPhoto(null)
     }
   }
 
-  const handleSubmitQc = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSuccessMessage(null)
-    try {
-      setQcSubmitting(true)
-      await apiClient.submitQcEvidence(id!, {
-        frontPhoto,
-        backPhoto,
-        detailPhoto,
-        notes: qcNotes
-      })
-      setSuccessMessage('Bukti QC berhasil dikirimkan ke Admin!')
-      await fetchDetail()
-    } catch (err: any) {
-      setError(err.message || 'Gagal mengirimkan bukti QC.')
-    } finally {
-      setQcSubmitting(false)
+  const handleSubmitPhotos = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    if (!frontPhoto || !backPhoto || !detailPhoto) {
+      setError('Pilih tiga foto: tampak depan, belakang, dan jahitan dekat.')
+      return
     }
+
+    await runAction(
+      'submit-photos',
+      () =>
+        apiClient.submitQcEvidence(id!, {
+          frontPhoto,
+          backPhoto,
+          detailPhoto,
+          notes: qcNotes || 'Foto hasil jahitan dikirim oleh Mitra.'
+        }),
+      'Foto sudah terkirim. EcoThread akan memeriksa hasil jahitan Ibu.'
+    )
+  }
+
+  const handleReportIssue = async (event: React.FormEvent) => {
+    event.preventDefault()
+    await runAction(
+      'report-issue',
+      () =>
+        apiClient.createProductionIssue(id!, {
+          issueType,
+          severity: 'medium',
+          description: issueDescription
+        }),
+      'Kendala sudah dikirim. Tim EcoThread akan membantu Ibu.'
+    )
+    setIssueDescription('')
   }
 
   if (loading) {
-    return <LoadingSpinner message="Memuat detail pesanan..." />
+    return <LoadingSpinner message="Membuka rincian pekerjaan..." />
   }
 
-  if (error || !order) {
+  if (!order) {
     return (
-      <div style={{ padding: '1.5rem 1rem' }}>
-        <Alert type="danger" title="Pesanan Tidak Ditemukan">{error || 'Pesanan tidak ditemukan.'}</Alert>
+      <div className="mitra-page">
+        <Alert type="danger" title="Pekerjaan tidak ditemukan">
+          {error || 'Pekerjaan ini tidak tersedia.'}
+        </Alert>
         <Link to="/mitra/orders" className="btn btn-secondary">
-          <ArrowLeft size={16} /> Kembali ke Pesanan
+          <ArrowLeft size={18} /> Kembali ke pekerjaan
         </Link>
       </div>
     )
   }
 
+  const status = getMitraStatus(order.status)
+  const active = ['accepted', 'kit_received', 'in_progress', 'qc_revision'].includes(order.status)
+  const canUpdateStage = ['accepted', 'kit_received', 'in_progress'].includes(order.status)
+  const targetDate = order.targetCompletion
+    ? new Date(order.targetCompletion).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      })
+    : 'Belum ditentukan'
+  const latestProgress = [...(order.productionProgress || [])].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  )[0]
+
   return (
-    <div style={{ padding: '1.5rem 1rem' }}>
-      <div style={{ marginBottom: '1rem' }}>
-        <Link to="/mitra/orders" style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
-          <ArrowLeft size={16} /> Kembali ke Pesanan Saya
-        </Link>
-      </div>
+    <div className="mitra-page">
+      <Link to="/mitra/orders" className="mitra-back">
+        <ArrowLeft size={18} aria-hidden="true" />
+        Kembali ke pekerjaan
+      </Link>
 
-      {successMessage && <Alert type="success" title="Sukses">{successMessage}</Alert>}
-      {error && <Alert type="danger" title="Error">{error}</Alert>}
+      {successMessage && <Alert type="success" title="Berhasil">{successMessage}</Alert>}
+      {error && <Alert type="danger" title="Belum berhasil">{error}</Alert>}
 
-      {/* Header Info */}
-      <Card style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+      <section className="mitra-detail-summary">
+        <div className="mitra-job-card__top">
           <div>
-            <h1 style={{ fontSize: '1.5rem', color: '#FFF', margin: 0 }}>{order.orderCode}</h1>
-            <p style={{ color: 'var(--color-warning)', fontSize: '0.9rem', marginTop: '2px', fontWeight: 600 }}>
-              {order.ecoKit?.name}
+            <p style={{ fontSize: '0.78rem', marginBottom: '0.25rem' }}>{order.orderCode}</p>
+            <h1 style={{ margin: 0, fontSize: '1.45rem' }}>
+              {order.ecoKit?.name || 'Pekerjaan jahit EcoThread'}
+            </h1>
+          </div>
+          <span className={`mitra-status mitra-status--${status.tone}`}>
+            {status.label}
+          </span>
+        </div>
+
+        <p>{status.help}</p>
+
+        <div className="mitra-detail-grid">
+          <div>
+            <span>Upah untuk Ibu</span>
+            <strong>{formatRupiah(order.agreedPayoutRate)}</strong>
+          </div>
+          <div>
+            <span>Selesai sebelum</span>
+            <strong>{targetDate}</strong>
+          </div>
+          <div>
+            <span>Pola jahitan</span>
+            <strong>{order.ecoKit?.pattern?.name || 'Lihat petunjuk Eco-Kit'}</strong>
+          </div>
+          <div>
+            <span>Kabar terakhir</span>
+            <strong>{latestProgress?.stepName || status.label}</strong>
+          </div>
+        </div>
+
+        <details className="mitra-disclosure" style={{ marginTop: 0 }}>
+          <summary>Lihat bahan dan keterangan pekerjaan</summary>
+          <div className="mitra-disclosure__body">
+            <p>
+              {order.ecoKit?.pattern?.description ||
+                'Ikuti pola dan bahan yang tersedia di dalam Eco-Kit.'}
             </p>
+            {(order.ecoKit?.ecoKitItems || []).map((item: any) => (
+              <p key={item.id} style={{ marginTop: '0.5rem' }}>
+                <strong>{item.batch?.materialType || 'Bahan tekstil'}</strong>
+                {' · '}
+                {item.quantity} {item.unit}
+              </p>
+            ))}
           </div>
-          <Badge variant={order.status === 'offered' ? 'warning' : order.status === 'accepted' ? 'info' : 'success'}>
-            {order.status}
-          </Badge>
-        </div>
+        </details>
+      </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-          <div>Tarif Payout: <strong style={{ color: '#FFF' }}>Rp {order.agreedPayoutRate?.toLocaleString('id-ID')}</strong></div>
-          <div>Pola: <strong style={{ color: '#FFF' }}>{order.ecoKit?.pattern?.name}</strong></div>
-        </div>
-
-        {/* Offered Actions */}
-        {order.status === 'offered' && (
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-            <Button onClick={handleAccept} variant="primary" style={{ flex: 1 }}>
-              <CheckCircle size={16} /> Terima Penugasan
-            </Button>
-            <Button onClick={() => setShowRejectForm(!showRejectForm)} variant="secondary" style={{ flex: 1, color: 'var(--color-status-danger)' }}>
-              <XCircle size={16} /> Tolak Penugasan
-            </Button>
+      {order.status === 'offered' && (
+        <section className="mitra-action-card">
+          <h2>Apakah Ibu bisa mengerjakannya?</h2>
+          <p>Pastikan jenis jahitan, upah, dan tanggal selesai sudah cocok.</p>
+          <div className="mitra-job-actions" style={{ marginTop: '1rem' }}>
+            <button
+              type="button"
+              onClick={handleAccept}
+              className="btn btn-primary"
+              disabled={busyAction === 'accept'}
+            >
+              <CheckCircle2 size={19} />
+              {busyAction === 'accept' ? 'Menyimpan...' : 'Ya, saya terima'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRejectForm((current) => !current)}
+              className="btn btn-secondary"
+            >
+              <XCircle size={19} />
+              Tidak bisa
+            </button>
           </div>
-        )}
 
-        {showRejectForm && (
-          <form onSubmit={handleReject} style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Alasan Penolakan *</label>
-            <Input value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Kapasitas jahit penuh" required />
-            <Button type="submit" variant="secondary" style={{ width: '100%', marginTop: '0.75rem', color: 'var(--color-status-danger)' }}>
-              Konfirmasi Tolak Order
-            </Button>
-          </form>
-        )}
-      </Card>
+          {showRejectForm && (
+            <form onSubmit={handleReject} style={{ marginTop: '1rem' }}>
+              <label htmlFor="rejection-reason">Mengapa belum bisa menerima?</label>
+              <select
+                id="rejection-reason"
+                value={rejectionReason}
+                onChange={(event) => setRejectionReason(event.target.value)}
+                required
+              >
+                <option value="">Pilih alasan</option>
+                <option value="Pekerjaan jahit sedang penuh">Pekerjaan sedang penuh</option>
+                <option value="Belum memiliki alat yang dibutuhkan">Alat belum tersedia</option>
+                <option value="Waktu penyelesaian terlalu dekat">Waktunya terlalu dekat</option>
+                <option value="Jenis jahitan belum dikuasai">Belum menguasai jenis jahitan</option>
+              </select>
+              <button
+                type="submit"
+                className="btn btn-secondary"
+                disabled={!rejectionReason || busyAction === 'reject'}
+                style={{ width: '100%', marginTop: '0.75rem' }}
+              >
+                Simpan jawaban
+              </button>
+            </form>
+          )}
+        </section>
+      )}
 
-      {/* Progress & Submit QC Sections for Active Orders */}
-      {['accepted', 'kit_received', 'in_progress', 'qc_revision'].includes(order.status) && (
+      {active && (
         <>
-          {/* Progress Update Form */}
-          <Card style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
-            <h3 style={{ fontSize: '1.1rem', color: '#FFF', marginBottom: '0.75rem' }}>Update Progress Jahit</h3>
-            <form onSubmit={handleProgress} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Tahap Pengerjaan</label>
+          {canUpdateStage && (
+            <section className="mitra-action-card">
+              <h2>1. Jahitan sudah sampai tahap mana?</h2>
+              <p>Tekan satu pilihan yang paling sesuai. Tidak perlu mengisi angka.</p>
+              <div className="mitra-stage-buttons">
+                {workStages.map((stage, index) => (
+                  <button
+                    type="button"
+                    className="mitra-stage-button"
+                    key={stage.stepName}
+                    onClick={() => handleStage(stage)}
+                    disabled={busyAction !== null}
+                  >
+                    <b>{index + 1}</b>
+                    <span>{busyAction === stage.stepName ? 'Menyimpan...' : stage.label}</span>
+                    <ChevronRight size={18} style={{ marginLeft: 'auto' }} />
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="mitra-action-card">
+            <h2>{canUpdateStage ? '2. Jika sudah selesai, kirim tiga foto' : 'Kirim ulang tiga foto setelah diperbaiki'}</h2>
+            <p>Tekan setiap kotak untuk membuka kamera atau galeri. Maksimal 5 MB per foto.</p>
+
+            <form onSubmit={handleSubmitPhotos}>
+              <div className="mitra-photo-grid">
+                <label className={`mitra-photo-input ${frontPhoto ? 'mitra-photo-input--ready' : ''}`}>
+                  {frontPhoto ? <Check size={25} /> : <Camera size={25} />}
+                  <span>{uploadingPhoto === 'front' ? 'Mengunggah...' : frontPhoto ? 'Foto depan siap' : 'Foto depan'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    onChange={(event) => handlePhoto('front', event.target.files?.[0], setFrontPhoto)}
+                    disabled={uploadingPhoto !== null}
+                  />
+                </label>
+
+                <label className={`mitra-photo-input ${backPhoto ? 'mitra-photo-input--ready' : ''}`}>
+                  {backPhoto ? <Check size={25} /> : <Camera size={25} />}
+                  <span>{uploadingPhoto === 'back' ? 'Mengunggah...' : backPhoto ? 'Foto belakang siap' : 'Foto belakang'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    onChange={(event) => handlePhoto('back', event.target.files?.[0], setBackPhoto)}
+                    disabled={uploadingPhoto !== null}
+                  />
+                </label>
+
+                <label className={`mitra-photo-input ${detailPhoto ? 'mitra-photo-input--ready' : ''}`}>
+                  {detailPhoto ? <Check size={25} /> : <Camera size={25} />}
+                  <span>{uploadingPhoto === 'detail' ? 'Mengunggah...' : detailPhoto ? 'Foto jahitan siap' : 'Foto jahitan dekat'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    onChange={(event) => handlePhoto('detail', event.target.files?.[0], setDetailPhoto)}
+                    disabled={uploadingPhoto !== null}
+                  />
+                </label>
+              </div>
+
+              <label htmlFor="qc-notes">Catatan untuk EcoThread (boleh dikosongkan)</label>
+              <textarea
+                id="qc-notes"
+                value={qcNotes}
+                onChange={(event) => setQcNotes(event.target.value)}
+                placeholder="Contoh: bagian lengan sudah dirapikan."
+              />
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={
+                  !frontPhoto ||
+                  !backPhoto ||
+                  !detailPhoto ||
+                  uploadingPhoto !== null ||
+                  busyAction === 'submit-photos'
+                }
+                style={{ width: '100%', marginTop: '0.85rem' }}
+              >
+                <Send size={18} />
+                {busyAction === 'submit-photos' ? 'Mengirim foto...' : 'Kirim hasil jahitan'}
+              </button>
+            </form>
+          </section>
+
+          <details className="mitra-disclosure">
+            <summary>
+              <AlertTriangle size={17} style={{ display: 'inline', marginRight: '0.45rem' }} />
+              Ada kendala? Minta bantuan di sini
+            </summary>
+            <div className="mitra-disclosure__body">
+              <form onSubmit={handleReportIssue}>
+                <label htmlFor="issue-type">Kendala yang dialami</label>
                 <select
-                  value={stepName}
-                  onChange={(e) => setStepName(e.target.value)}
-                  style={{ width: '100%', padding: '0.65rem', borderRadius: '0.375rem', backgroundColor: '#0F172A', border: '1px solid var(--color-border)', color: '#FFF' }}
+                  id="issue-type"
+                  value={issueType}
+                  onChange={(event) => setIssueType(event.target.value)}
                 >
-                  <option value="Cutting & Sorting">Cutting & Sorting</option>
-                  <option value="Sewing Body">Sewing Body Garment</option>
-                  <option value="Finishing & Trimming">Finishing & Trimming</option>
+                  <option value="material_shortage">Bahan kurang</option>
+                  <option value="material_damage">Bahan rusak</option>
+                  <option value="pattern_unclear">Petunjuk jahit kurang jelas</option>
+                  <option value="equipment_problem">Alat jahit bermasalah</option>
+                  <option value="deadline_risk">Butuh tambahan waktu</option>
+                  <option value="other">Kendala lainnya</option>
                 </select>
-              </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Persentase Selesai (%)</label>
-                <Input type="number" min={0} max={100} value={percentage} onChange={(e) => setPercentage(Number(e.target.value))} required />
-              </div>
+                <label htmlFor="issue-description" style={{ marginTop: '0.75rem' }}>
+                  Ceritakan singkat kendalanya
+                </label>
+                <textarea
+                  id="issue-description"
+                  value={issueDescription}
+                  onChange={(event) => setIssueDescription(event.target.value)}
+                  placeholder="Contoh: kain denim kurang untuk bagian lengan."
+                  required
+                />
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Catatan Progress</label>
-                <Input value={progressNotes} onChange={(e) => setProgressNotes(e.target.value)} placeholder="Potongan kain denim telah disatukan" />
-              </div>
-
-              <Button type="submit" variant="primary" disabled={progressSubmitting} style={{ padding: '0.75rem' }}>
-                {progressSubmitting ? 'Menyimpan...' : 'Simpan Progress'}
-              </Button>
-            </form>
-          </Card>
-
-          {/* Submit QC Evidence Form */}
-          <Card style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
-            <h3 style={{ fontSize: '1.1rem', color: '#FFF', marginBottom: '0.5rem' }}>Ajukan Bukti Quality Control (QC)</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-              Wajib melampirkan foto hasil jahit tampak depan, belakang, dan detail kelim.
-            </p>
-
-            <form onSubmit={handleSubmitQc} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>URL Foto Depan *</label>
-                <Input value={frontPhoto} onChange={(e) => setFrontPhoto(e.target.value)} required />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>URL Foto Belakang *</label>
-                <Input value={backPhoto} onChange={(e) => setBackPhoto(e.target.value)} required />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>URL Foto Detail Jahitan *</label>
-                <Input value={detailPhoto} onChange={(e) => setDetailPhoto(e.target.value)} required />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Catatan Hasil Jahit</label>
-                <Input value={qcNotes} onChange={(e) => setQcNotes(e.target.value)} />
-              </div>
-
-              <Button type="submit" variant="primary" disabled={qcSubmitting} style={{ padding: '0.75rem' }}>
-                <ShieldCheck size={16} /> {qcSubmitting ? 'Mengirim QC...' : 'Kirimkan Pengajuan QC'}
-              </Button>
-            </form>
-          </Card>
+                <button
+                  type="submit"
+                  className="btn btn-secondary"
+                  disabled={!issueDescription || busyAction === 'report-issue'}
+                  style={{ width: '100%', marginTop: '0.75rem' }}
+                >
+                  {busyAction === 'report-issue' ? 'Mengirim...' : 'Kirim permintaan bantuan'}
+                </button>
+              </form>
+            </div>
+          </details>
         </>
+      )}
+
+      {!active && order.status !== 'offered' && (
+        <section className="mitra-next" style={{ marginTop: '1rem' }}>
+          <div className="mitra-next__eyebrow">Langkah berikutnya</div>
+          <h2>{status.label}</h2>
+          <p>{status.help}</p>
+          <Link to="/mitra/orders" className="btn btn-primary">
+            Kembali ke daftar pekerjaan
+          </Link>
+        </section>
       )}
     </div>
   )

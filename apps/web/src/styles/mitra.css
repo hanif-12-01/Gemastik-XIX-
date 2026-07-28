@@ -1,0 +1,600 @@
+.mitra-app {
+  --color-text-main: #243958;
+  --color-text-muted: #63718a;
+  --color-text-dim: #7d899b;
+  --color-border: rgba(36, 57, 88, 0.16);
+  --color-primary: #5677aa;
+  --color-primary-hover: #496996;
+  --color-primary-contrast: #ffffff;
+  min-height: 100vh;
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  background:
+    radial-gradient(circle at 10% 0%, rgba(107, 196, 153, 0.12), transparent 26rem),
+    #f3f0ea;
+  color: var(--brand-ink);
+}
+
+.mitra-topbar {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem max(1rem, calc((100vw - 920px) / 2));
+  background: rgba(251, 244, 233, 0.96);
+  border-bottom: 1px solid rgba(36, 57, 88, 0.12);
+  box-shadow: 0 5px 22px rgba(36, 57, 88, 0.07);
+  backdrop-filter: blur(12px);
+}
+
+.mitra-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--brand-ink);
+}
+
+.mitra-brand img {
+  width: 58px;
+  height: 46px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.mitra-brand strong,
+.mitra-brand span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mitra-brand strong {
+  color: var(--brand-ink);
+  font-size: 1rem;
+}
+
+.mitra-brand span {
+  max-width: 36ch;
+  color: #63718a;
+  font-size: 0.76rem;
+}
+
+.mitra-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mitra-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #356b52;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.mitra-logout {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.8rem;
+  background: #fff;
+  border: 1px solid rgba(36, 57, 88, 0.16);
+  border-radius: 12px;
+  color: #8a4a4a;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.mitra-main {
+  width: min(100%, 820px);
+  margin: 0 auto;
+}
+
+.mitra-page {
+  padding: 1.35rem 1rem 2rem;
+}
+
+.mitra-page h1,
+.mitra-page h2,
+.mitra-page h3,
+.mitra-page strong {
+  color: var(--brand-ink);
+}
+
+.mitra-page p {
+  color: #63718a;
+}
+
+.mitra-page .card,
+.mitra-card {
+  background: #fffdf9;
+  border-color: rgba(36, 57, 88, 0.13);
+  box-shadow: 0 10px 28px rgba(36, 57, 88, 0.08);
+}
+
+.mitra-page .card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(75, 110, 174, 0.28);
+  box-shadow: 0 14px 32px rgba(36, 57, 88, 0.11);
+}
+
+.mitra-page .btn {
+  min-height: 52px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+}
+
+.mitra-page .btn-secondary {
+  background: #fff;
+  border-color: rgba(36, 57, 88, 0.18);
+  color: var(--brand-ink);
+}
+
+.mitra-page input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.mitra-page select,
+.mitra-page textarea {
+  min-height: 52px;
+  background: #fff !important;
+  border-color: rgba(36, 57, 88, 0.18) !important;
+  color: var(--brand-ink) !important;
+}
+
+.mitra-page select option {
+  background: #fff;
+  color: var(--brand-ink);
+}
+
+.mitra-page label {
+  color: #4f5f78;
+  font-size: 0.92rem;
+}
+
+.mitra-page-header {
+  margin-bottom: 1.2rem;
+}
+
+.mitra-page-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.55rem, 5vw, 2rem);
+}
+
+.mitra-page-header p {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.mitra-back {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+  color: #4b638c;
+  font-weight: 700;
+}
+
+.mitra-next {
+  position: relative;
+  padding: 1.35rem;
+  overflow: hidden;
+  background: #e7edf7;
+  border: 1px solid #ced9ea;
+  border-radius: 22px;
+  box-shadow: 0 12px 28px rgba(36, 57, 88, 0.08);
+}
+
+.mitra-next::after {
+  position: absolute;
+  right: -35px;
+  bottom: -45px;
+  width: 135px;
+  height: 135px;
+  background: rgba(107, 196, 153, 0.2);
+  border-radius: 50%;
+  content: '';
+}
+
+.mitra-next > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mitra-next__eyebrow {
+  margin-bottom: 0.35rem;
+  color: #4f6382;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mitra-next h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.35rem;
+}
+
+.mitra-next .btn {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.mitra-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.mitra-stat {
+  padding: 1rem 0.8rem;
+  background: #fffdf9;
+  border: 1px solid rgba(36, 57, 88, 0.12);
+  border-radius: 18px;
+  text-align: center;
+}
+
+.mitra-stat strong {
+  display: block;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.mitra-stat span {
+  display: block;
+  margin-top: 0.45rem;
+  color: #63718a;
+  font-size: 0.79rem;
+}
+
+.mitra-help-card {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 1.15rem;
+  background: #fffaf1;
+  border: 1px solid #e7dcc5;
+  border-radius: 18px;
+}
+
+.mitra-help-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.mitra-help-step b {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  background: #dce6f4;
+  border-radius: 50%;
+  color: var(--brand-ink);
+}
+
+.mitra-help-step span {
+  color: #53627a;
+  font-size: 0.9rem;
+}
+
+.mitra-job-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.mitra-job-card {
+  padding: 1.15rem;
+  background: #fffdf9;
+  border: 1px solid rgba(36, 57, 88, 0.13);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(36, 57, 88, 0.07);
+}
+
+.mitra-job-card__top,
+.mitra-money-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.mitra-job-card h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.08rem;
+}
+
+.mitra-job-card p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.mitra-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  background: #edf0f4;
+  border-radius: 999px;
+  color: #566277;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.mitra-status--warning { background: #f4ecd1; color: #725d23; }
+.mitra-status--info { background: #e1e9f5; color: #405d89; }
+.mitra-status--success { background: #dff0e6; color: #346b50; }
+.mitra-status--danger { background: #f5e1e1; color: #8a4a4a; }
+
+.mitra-money-row {
+  align-items: end;
+  margin: 1rem 0;
+  padding: 0.85rem 0;
+  border-block: 1px solid rgba(36, 57, 88, 0.1);
+}
+
+.mitra-money-row span {
+  color: #63718a;
+  font-size: 0.82rem;
+}
+
+.mitra-money-row strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.2rem;
+}
+
+.mitra-job-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.mitra-job-actions--single {
+  grid-template-columns: 1fr;
+}
+
+.mitra-detail-summary {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #fffdf9;
+  border: 1px solid rgba(36, 57, 88, 0.13);
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgba(36, 57, 88, 0.08);
+}
+
+.mitra-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.mitra-detail-grid div {
+  padding: 0.8rem;
+  background: #f4f5f6;
+  border-radius: 14px;
+}
+
+.mitra-detail-grid span {
+  display: block;
+  color: #6a7587;
+  font-size: 0.77rem;
+}
+
+.mitra-detail-grid strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.94rem;
+}
+
+.mitra-action-card {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: #fffdf9;
+  border: 1px solid rgba(36, 57, 88, 0.13);
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgba(36, 57, 88, 0.07);
+}
+
+.mitra-action-card h2 {
+  margin-bottom: 0.45rem;
+  font-size: 1.2rem;
+}
+
+.mitra-stage-buttons {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.mitra-stage-button {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  background: #f4f6f8;
+  border: 1px solid rgba(36, 57, 88, 0.14);
+  border-radius: 15px;
+  color: var(--brand-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.mitra-stage-button:hover {
+  background: #e9eef5;
+  border-color: rgba(75, 110, 174, 0.35);
+}
+
+.mitra-stage-button b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  background: #dce6f4;
+  border-radius: 50%;
+}
+
+.mitra-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.mitra-photo-input {
+  position: relative;
+  display: grid;
+  min-height: 118px;
+  place-items: center;
+  padding: 0.65rem;
+  background: #f4f6f8;
+  border: 1px dashed #9aa9be;
+  border-radius: 15px;
+  color: #53627a;
+  cursor: pointer;
+  text-align: center;
+}
+
+.mitra-photo-input input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.mitra-photo-input--ready {
+  background: #e5f2e9;
+  border-style: solid;
+  border-color: #9cc9ae;
+  color: #356b52;
+}
+
+.mitra-photo-input span {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.mitra-disclosure {
+  margin-top: 1rem;
+  background: #fffaf1;
+  border: 1px solid #e7dcc5;
+  border-radius: 18px;
+}
+
+.mitra-disclosure summary {
+  min-height: 54px;
+  padding: 0.9rem 1rem;
+  color: #6b5725;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.mitra-disclosure__body {
+  padding: 0 1rem 1rem;
+}
+
+.mitra-nav {
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  min-height: 72px;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0.35rem max(0.4rem, calc((100vw - 720px) / 2)) env(safe-area-inset-bottom, 0px);
+  background: rgba(255, 253, 249, 0.98);
+  border-top: 1px solid rgba(36, 57, 88, 0.12);
+  box-shadow: 0 -8px 26px rgba(36, 57, 88, 0.1);
+  backdrop-filter: blur(14px);
+}
+
+.mitra-nav a {
+  display: flex;
+  min-width: 0;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 14px;
+  color: #758096;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.mitra-nav a[aria-current='page'] {
+  background: #e5ebf4;
+  color: #3f5f90;
+}
+
+@media (max-width: 600px) {
+  .mitra-topbar {
+    min-height: 66px;
+    padding-inline: 0.75rem;
+  }
+
+  .mitra-brand img {
+    width: 48px;
+    height: 40px;
+  }
+
+  .mitra-brand strong {
+    font-size: 0.9rem;
+  }
+
+  .mitra-brand span,
+  .mitra-verified,
+  .mitra-logout span {
+    display: none;
+  }
+
+  .mitra-logout {
+    width: 44px;
+    padding: 0;
+  }
+
+  .mitra-page {
+    padding: 1rem 0.8rem 1.5rem;
+  }
+
+  .mitra-stat-grid {
+    gap: 0.5rem;
+  }
+
+  .mitra-stat {
+    padding-inline: 0.4rem;
+  }
+
+  .mitra-stat span {
+    font-size: 0.7rem;
+  }
+
+  .mitra-job-actions,
+  .mitra-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mitra-photo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mitra-photo-input {
+    min-height: 82px;
+  }
+}
