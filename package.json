@@ -20,7 +20,11 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "verify": "tsx scripts/release-check.ts",
-    "release:check": "tsx scripts/release-check.ts && pnpm test:db:reset && pnpm test:db:seed && pnpm test:e2e"
+    "release:check": "tsx scripts/release-check.ts && pnpm test:db:reset && pnpm test:db:seed && pnpm test:e2e",
+    "db:migrate:preview": "tsx scripts/db-migrate-preview.ts",
+    "db:migrate:production": "tsx scripts/db-migrate-production.ts",
+    "db:seed:staging": "tsx scripts/db-seed-staging.ts",
+    "deploy:check": "tsx scripts/deploy-check.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",
